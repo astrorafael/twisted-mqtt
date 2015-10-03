@@ -1,5 +1,5 @@
 
-twsited-mqtt
+twisted-mqtt
 ============
 
 MQTT Client protocol for Twisted.
