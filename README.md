@@ -31,7 +31,7 @@ Credits
 -------
 
 I started writting this software after finding [Adam Rudd's MQTT.py code](https://github.com/adamvr/MQTT-For-Twisted-Python). 
-Some parts of this library still has hos code. However, I soon began taking my
+A small part his code is still there. However, I soon began taking my
 own direction both in design and scope.
 
 Function/methods docstrings contain quotes of the OASIS [mqtt-v3.1.1](http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/mqtt-v3.1.1.html) standard.
