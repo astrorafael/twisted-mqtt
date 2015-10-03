@@ -21,6 +21,11 @@ Just type:
 
   `sudo pip install twisted-mqtt`
 
+or from GitHub:
+
+  `git clone https://github.com/astrorafael/twisted-mqtt.git`
+  `cd twisted-mqtt`
+  `sudo python setup.py install`
 
 Credits
 -------
