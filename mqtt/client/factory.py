@@ -39,6 +39,8 @@ from twisted.logger import Logger
 # Own modules
 # -----------
 
+from .. import __version__
+
 log = Logger()
 
 class MQTTFactory(ReconnectingClientFactory):
@@ -52,10 +54,10 @@ class MQTTFactory(ReconnectingClientFactory):
         self.maxDelay = 2*3600
         # Packet Id generator
         self.id       = 0
-        self.queuePublishTx  = deque() # PUBLISH messages Waiting for PUBREC/PUBACK
+        self.queuePublishTx   = deque() # PUBLISH messages Waiting for PUBREC/PUBACK
         self.queuePubRelease  = deque() # PUBREL  messages (qos=2) waiting for PUBCOMP (publisher)
         self.queuePublishRx   = deque() # PUBLISH messages (qos=2) waiting for PUBREL (subscriber side)
-     
+        log.info("MQTT Client library version {version}", version=__version__)
     
     def buildProtocol(self, addr):
         
