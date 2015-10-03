@@ -25,10 +25,9 @@ class MyService(Service):
         d = self.protocol.publish(topic="foo/bar/baz3", qos=2, message="hello world 2")
         d.addErrback(self.printError)
 
-   def printError(self, *args):
+    def printError(self, *args):
         log.debug("args={args!s}", args=args)
         reactor.stop()
-
 
 if __name__ == '__main__':
     import sys
