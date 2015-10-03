@@ -38,8 +38,7 @@ from twisted.logger import Logger
 # Own modules
 # -----------
 
-from . import PY2, v31, v311
-
+from . import v31, v311
 log = Logger()
 
 
@@ -135,8 +134,6 @@ class DISCONNECT(object):
         '''
         header    = bytearray(2)
         header[0] = 0xE0
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
@@ -160,8 +157,6 @@ class PINGREQ(object):
         '''
         header    = bytearray(2)
         header[0] = 0xC0
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
@@ -185,8 +180,6 @@ class PINGRES(object):
         '''
         header    = bytearray(2)
         header[0] = 0xD0
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
@@ -250,8 +243,6 @@ class CONNECT(object):
         header.extend(encodeLength(len(varHeader) + len(payload)))
         header.extend(varHeader)
         header.extend(payload)
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
@@ -318,8 +309,6 @@ class CONNACK(object):
         varHeader[1] = self.resultCode
         header.extend(encodeLength(len(varHeader)))
         header.extend(varHeader)
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
@@ -360,8 +349,6 @@ class SUBSCRIBE(object):
         header.extend(encodeLength(len(varHeader) + len(payload)))
         header.extend(varHeader)
         header.extend(payload)
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
@@ -408,8 +395,6 @@ class SUBACK(object):
         header.extend(encodeLength(len(varHeader) + len(payload)))
         header.extend(varHeader)
         header.extend(payload)
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
@@ -454,8 +439,6 @@ class UNSUBSCRIBE(object):
         header.extend(encodeLength(len(varHeader) + len(payload)))
         header.extend(varHeader)
         header.extend(payload)
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
@@ -495,8 +478,6 @@ class UNSUBACK(object):
         header[0] = 0xB0 
         header.extend(encodeLength(len(varHeader)))
         header.extend(varHeader)
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
@@ -597,8 +578,6 @@ class PUBACK(object):
         header[0] = 0x40 
         header.extend(encodeLength(len(varHeader)))
         header.extend(varHeader)
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
@@ -631,8 +610,6 @@ class PUBREC(object):
         header[0] = 0x50 
         header.extend(encodeLength(len(varHeader)))
         header.extend(varHeader)
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
@@ -666,8 +643,6 @@ class PUBREL(object):
         header[0] = 0x62    # packet with QoS=1
         header.extend(encodeLength(len(varHeader)))
         header.extend(varHeader)
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
@@ -701,8 +676,6 @@ class PUBCOMP(object):
         header[0] = 0x72 
         header.extend(encodeLength(len(varHeader)))
         header.extend(varHeader)
-        if PY2:
-            header = str(header)
         self.encoded = header
         return header
 
