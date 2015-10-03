@@ -146,7 +146,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         # By design PUBACK cannot arrive unordered, and we always pop the oldest one from the queue,
         # so:  response.msgId == queuePublishTx[0].msgId
-        log.debug("<==  {packet} (id={response.msgId:04x})", packet="PUBACK", response=response)
+        log.debug("<== {packet} (id={response.msgId:04x})", packet="PUBACK", response=response)
         request = self.factory.queuePublishTx.popleft()
         request.alarm.cancel()
         request.deferred.callback(request.msgId)
@@ -159,7 +159,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         # By design PUBREC cannot arrive unordered, and we always pop the oldest one from the queue,
         # so:  response.msgId == queuePublishTx[0].msgId
-        log.debug("<==  {packet} (id={response.msgId:04x})", packet="PUBREC", response=response)
+        log.debug("<== {packet} (id={response.msgId:04x})", packet="PUBREC", response=response)
         request = self.factory.queuePublishTx.popleft()
         request.alarm.cancel()
         reply = PUBREL()
@@ -178,7 +178,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle PUBCOMP control packet received (QoS=2).
         '''
         # Same comment as PUBACK
-        log.debug("<==  {packet} (id={response.msgId:04x})", packet="PUBCOMP", response=response)
+        log.debug("<== {packet} (id={response.msgId:04x})", packet="PUBCOMP", response=response)
         reply = self.factory.queuePubRelease.popleft() 
         reply.alarm.cancel()
         reply.deferred.callback(reply.msgId)
