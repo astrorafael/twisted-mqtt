@@ -146,7 +146,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         # By design PUBACK cannot arrive unordered, and we always pop the oldest one from the queue,
         # so:  response.msgId == queuePublishTx[0].msgId
-        log.debug("<== {packet} (id={response.msgId:04x})", packet="PUBACK", response=response)
+        log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBACK", response=response)
         request = self.factory.queuePublishTx.popleft()
         request.alarm.cancel()
         request.deferred.callback(request.msgId)
@@ -159,7 +159,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         # By design PUBREC cannot arrive unordered, and we always pop the oldest one from the queue,
         # so:  response.msgId == queuePublishTx[0].msgId
-        log.debug("<== {packet} (id={response.msgId:04x})", packet="PUBREC", response=response)
+        log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBREC", response=response)
         request = self.factory.queuePublishTx.popleft()
         request.alarm.cancel()
         reply = PUBREL()
@@ -178,7 +178,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle PUBCOMP control packet received (QoS=2).
         '''
         # Same comment as PUBACK
-        log.debug("<== {packet} (id={response.msgId:04x})", packet="PUBCOMP", response=response)
+        log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBCOMP", response=response)
         reply = self.factory.queuePubRelease.popleft() 
         reply.alarm.cancel()
         reply.deferred.callback(reply.msgId)
@@ -258,9 +258,9 @@ class MQTTProtocol(MQTTBaseProtocol):
             request.alarm = self.callLater(
             request.interval(), self._publishError, request)
         if request.msgId is None:
-            log.debug("==> {packet} (id={request.msgId} qos={request.qos} dup={dup})", packet="PUBLISH", request=request, dup=dup)
+            log.debug("==> {packet:7} (id={request.msgId} qos={request.qos} dup={dup})", packet="PUBLISH", request=request, dup=dup)
         else:
-            log.debug("==> {packet} (id={request.msgId:04x} qos={request.qos} dup={dup})", packet="PUBLISH", request=request, dup=dup)
+            log.debug("==> {packet:7} (id={request.msgId:04x} qos={request.qos} dup={dup})", packet="PUBLISH", request=request, dup=dup)
         self.transport.write(request.encoded)
 
     # --------------------------------------------------------------------------
@@ -274,7 +274,7 @@ class MQTTProtocol(MQTTBaseProtocol):
             reply.dup = dup
         reply.alarm = self.callLater(
             reply.interval(), self._pubrelError, reply)
-        log.debug("==> {packet} (id={reply.msgId:04x} dup={dup})", packet="PUBREL", reply=reply, dup=dup)
+        log.debug("==> {packet:7} (id={reply.msgId:04x} dup={dup})", packet="PUBREL", reply=reply, dup=dup)
         self.transport.write(reply.encoded)
 
     # --------------------------------------------------------------------------
@@ -287,7 +287,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle the absence of PUBACK / PUBREC
         '''
-        log.error("{packet} (id={request.msgId:04x} qos={request.qos}) {timeout}, _retryPublish", packet="PUBREC/PUBACK", request=request, timeout="timeout")
+        log.error("{packet:7} (id={request.msgId:04x} qos={request.qos}) {timeout}, _retryPublish", packet="PUBREC/PUBACK", request=request, timeout="timeout")
         self._retryPublish(request, True)
 
     # --------------------------------------------------------------------------
@@ -296,7 +296,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle the absence of PUBCOMP
         '''
-        log.error("{packet} (id={request.msgId:04x} qos={request.qos}) {timeout}, _retryPublish", packet="PUBCOMP", request=request, timeout="timeout")
+        log.error("{packet:7} (id={request.msgId:04x} qos={request.qos}) {timeout}, _retryPublish", packet="PUBCOMP", request=request, timeout="timeout")
         self._retryRelease(reply, True)
 
     # --------------------------------------------------------------------------

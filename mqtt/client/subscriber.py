@@ -135,7 +135,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle SUBACK control packet received.
         '''
-        log.debug("<== {packet}    (id={response.msgId:04x})" , packet="SUBACK",  response=response)
+        log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="SUBACK",  response=response)
         request = self._queueSubscribe.popleft()
         request.alarm.cancel()
         request.deferred.callback(response.granted)
@@ -146,7 +146,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle UNSUBACK control packet received.
         '''
-        log.debug("<== {packet}    (id={response.msgId:4x})" , packet="UNSUBACK",  response=response)
+        log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="UNSUBACK",  response=response)
         request = self._queueUnsubscribe.popleft()
         request.alarm.cancel()
         request.deferred.callback(response.msgId)
@@ -158,21 +158,21 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle PUBLISH control packet received.
         '''
         if  response.qos == 0:
-            log.debug("==> {packet} (id={response.msgId} qos={response.qos} dup={response.dup} retain={response.retain})" , packet="PUBLISH", response=response)
+            log.debug("==> {packet:7} (id={response.msgId} qos={response.qos} dup={response.dup} retain={response.retain})" , packet="PUBLISH", response=response)
             self._deliver(response)
         elif response.qos == 1:
-            log.debug("==> {packet} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain})" , packet="PUBLISH", response=response)
+            log.debug("==> {packet:7} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain})" , packet="PUBLISH", response=response)
             reply = PUBACK()
             reply.msgId = response.msgId
-            log.debug("<== {packet}  (id={response.msgId:04x})" , packet="PUBACK", response=response)
+            log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="PUBACK", response=response)
             self.transport.write(reply.encode())
             self._deliver(response)
         elif response.qos == 2:
-            log.debug("==> {packet} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain})" , packet="PUBLISH", response=response)
+            log.debug("==> {packet:7} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain})" , packet="PUBLISH", response=response)
             self.factory.queuePublishRx.append(response)
             reply = PUBREC()
             reply.msgId = response.msgId
-            log.debug("<== {packet}  (id={response.msgId:04x})" , packet="PUBREC", response=response)
+            log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="PUBREC", response=response)
             self.transport.write(reply.encode())
 
     # --------------------------------------------------------------------------
@@ -181,13 +181,13 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle PUBREL control packet received.
         '''
-        log.debug("==> {packet}  (id={response.msgId:04x} dup={response.dup})" , packet="PUBREL", response=response)
+        log.debug("==> {packet:7}(id={response.msgId:04x} dup={response.dup})" , packet="PUBREL", response=response)
         msg = self.factory.queuePublishRx.popleft()
         self._deliver(msg)
         reply = PUBCOMP()
         reply.msgId = response.msgId
         reply.encode()
-        log.debug("<== {packet} (id={response.msgId:04})" , packet="PUBCOMP", response=response)
+        log.debug("<== {packet:7} (id={response.msgId:04})" , packet="PUBCOMP", response=response)
         self.transport.write(reply.encoded)
 
     # --------------------------
@@ -277,7 +277,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         interval = request.interval() + 0.25*len(self._queueSubscribe)
         request.alarm = self.callLater(
             interval, self._subscribeError, request)
-        log.debug("==> {packet} (id={request.msgId:04x} dup={dup})", packet="SUBSCRIBE", request=request, dup=dup)
+        log.debug("==> {packet:7} (id={request.msgId:04x} dup={dup})", packet="SUBSCRIBE", request=request, dup=dup)
         self.transport.write(request.encoded)
 
     # --------------------------------------------------------------------------
@@ -291,7 +291,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         interval = request.interval() + 0.25*len(self._queueUnsubscribe)
         request.alarm = self.callLater(
             interval, self._unsubscribeError, request)
-        log.debug("==> {packet} (id={request.msgId:04x} dup={dup})", packet="UNSUBSCRIBE", request=request, dup=dup)
+        log.debug("==> {packet:7} (id={request.msgId:04x} dup={dup})", packet="UNSUBSCRIBE", request=request, dup=dup)
         self.transport.write(request.encoded)
 
     # --------------------------------------------------------------------------
@@ -307,7 +307,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle lack of SUBACK
         '''
-        log.error("{packet} (id={request.msgId:04x}) {timeout}, retransmitting", packet="SUBSCRIBE", request=request,  timeout="timeout")
+        log.error("{packet:7} (id={request.msgId:04x}) {timeout}, retransmitting", packet="SUBSCRIBE", request=request,  timeout="timeout")
         self._retrySubscribe(request,  True)
 
     # --------------------------------------------------------------------------
@@ -316,7 +316,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle ack of UNSUBACK packet
         '''
-        log.error("{packet} (id={request.msgId:04x}) {timeout}, retransmitting", packet="UNSUBSCRIBE", request=request,  timeout="timeout")
+        log.error("{packet:7} (id={request.msgId:04x}) {timeout}, retransmitting", packet="UNSUBSCRIBE", request=request,  timeout="timeout")
         self.reUnubscribe(request,  True)
 
     # --------------------------------------------------------------------------

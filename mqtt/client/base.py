@@ -138,7 +138,7 @@ class BaseState(object):
         Handles CONNACK packet from the server
         '''
         state = self.__class__.__name__
-        log.error("Unexpected {packet} packet received in {log_source}", packet="CONNACK")
+        log.error("Unexpected {packet:7} packet received in {log_source}", packet="CONNACK")
         
     
     def handlePINGRESP(self):
@@ -146,7 +146,7 @@ class BaseState(object):
         Handles PINGRESP packet from the server
         '''
         state = self.__class__.__name__
-        log.error("Unexpected {packet} packet received in {log_source}", packet="PINGRESP")
+        log.error("Unexpected {packet:7} packet received in {log_source}", packet="PINGRESP")
 
 
     def handleSUBACK(self, response):
@@ -154,7 +154,7 @@ class BaseState(object):
         Handles SUBACK packet from the server
         '''
         state = self.__class__.__name__
-        log.error("Unexpected {packet} packet received in {log_source}", packet="SUBACK")
+        log.error("Unexpected {packet:7} packet received in {log_source}", packet="SUBACK")
 
 
     def handleUNSUBACK(self, response):
@@ -162,7 +162,7 @@ class BaseState(object):
         Decodes specific UNSUBACK data from Variable Header & Payload
         '''
         state = self.__class__.__name__
-        log.error("Unexpected {packet} packet received in {log_source}", packet="UNSUBACK")
+        log.error("Unexpected {packet:7} packet received in {log_source}", packet="UNSUBACK")
 
 
     def handlePUBLISH(self, response):
@@ -170,7 +170,7 @@ class BaseState(object):
         Handles PUBLISH packet from the server
         '''
         state = self.__class__.__name__
-        log.error("Unexpected {packet} packet received in {log_source}", packet="PUBLISH")
+        log.error("Unexpected {packet:7} packet received in {log_source}", packet="PUBLISH")
 
 
     def handlePUBACK(self, response):
@@ -178,7 +178,7 @@ class BaseState(object):
         Handles PUBACK packet from the server
         '''
         state = self.__class__.__name__
-        log.error("Unexpected {packet} packet received in {log_source}", packet="PUBACK")
+        log.error("Unexpected {packet:7} packet received in {log_source}", packet="PUBACK")
 
 
     def handlePUBREC(self, response):
@@ -186,21 +186,21 @@ class BaseState(object):
         Handles PUBREC packet from the server
         '''
         state = self.__class__.__name__
-        log.error("Unexpected {packet} packet received in {log_source}", packet="PUBREC")
+        log.error("Unexpected {packet:7} packet received in {log_source}", packet="PUBREC")
 
     def handlePUBREL(self, response):
         '''
         Handles PUBREL packet from the server
         '''
         state = self.__class__.__name__
-        log.error("Unexpected {packet} packet received in {log_source}", packet="PUBREL")
+        log.error("Unexpected {packet:7} packet received in {log_source}", packet="PUBREL")
 
     def handlePUBCOMP(self, response):
         '''
         Handles PUBCOMP packet from the server
         '''
         state = self.__class__.__name__
-        log.error("Unexpected {packet} packet received in {log_source}", packet="PUBCOMP")
+        log.error("Unexpected {packet:7} packet received in {log_source}", packet="PUBCOMP")
 
 
 # ---------------------------------------
@@ -575,7 +575,7 @@ class MQTTBaseProtocol(Protocol):
         (0) has the effect of turning off the keep alive mechanism.
         '''
         # Changes state and execute deferreds
-        log.debug("<== {packet} (code={code} session={flags})", packet="CONNACK", code=response.resultCode, flags=response.session)
+        log.debug("<== {packet:7} (code={code} session={flags})", packet="CONNACK", code=response.resultCode, flags=response.session)
         MQTTBaseProtocol.state = self.CONNECTED
         request = self.connReq
         request.alarm.cancel()
@@ -597,7 +597,7 @@ class MQTTBaseProtocol(Protocol):
         '''
         Handles PINGRESP packet from the server
         '''
-        log.debug("<== {packet}", packet="PINGRESP")
+        log.debug("<== {packet:7}", packet="PINGRESP")
         self._pingReq.alarm.cancel()
         self._pingReq.alarm = None
 
@@ -621,7 +621,7 @@ class MQTTBaseProtocol(Protocol):
         '''
         Performs the actual work of disconnecting
         '''
-        log.debug("==> {packet}",packet="DISCONNECT")
+        log.debug("==> {packet:7}",packet="DISCONNECT")
         request.deferred = defer.succeed(True)
         request.encode()
         self.transport.write(request.encoded)
@@ -644,7 +644,7 @@ class MQTTBaseProtocol(Protocol):
             request.encode()
         except ValueError as e:
             return defer.fail(e)
-        log.debug("==> {packet} (id={id} keepalive={keepalive} clean={clean})", packet="CONNECT", id=request.clientId, keepalive=request.keepalive, clean=request.cleanStart)
+        log.debug("==> {packet:7} (id={id} keepalive={keepalive} clean={clean})", packet="CONNECT", id=request.clientId, keepalive=request.keepalive, clean=request.cleanStart)
         self._cleanStart = request.cleanStart
         self._version    = request.version
         self.transport.write(request.encoded)
@@ -659,7 +659,7 @@ class MQTTBaseProtocol(Protocol):
 
     def doPingRequest(self):
 
-        log.debug("==> {packet}", packet="PINGREQ")
+        log.debug("==> {packet:7}", packet="PINGREQ")
         self.transport.write(self._pingReq.encoded)
         self._pingReq.alarm = self.callLater(
             self._pingReq.keepalive, 
