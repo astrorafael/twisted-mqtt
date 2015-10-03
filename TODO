@@ -1,7 +1,4 @@
-* Documentar los modulos con el estandar de MQTT en la mano
-* Documentar con epydoc cada clase, metodo y funcion.
---------
-* publish que añada un campo encoding=None y sque se pregunte en caso 
- de string
-Revisar lo escrito en el readme
+* epydoc-style doc for al modules.
+* Testing under Python 2.7
+* Additional encoding param in publish method ?
 
