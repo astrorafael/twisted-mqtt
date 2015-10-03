@@ -1,0 +1,13 @@
+*.egg-info/
+build
+dist
+_trial_temp/
+*.pyc
+*~
+my*
+mqtt/*.pyc
+mqtt/*~
+mqtt/client/*.pyc
+mqtt/client/*~
+mqtt/__pycache__
+mqtt/client/__pycache__
