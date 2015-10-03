@@ -129,9 +129,6 @@ class DISCONNECT(object):
     def __init__(self):
         self.encoded = None 
 
-    def __del__(self):
-        log.debug("RECYCLING a DISCONNECT object")
-
     def encode(self):
         '''
         Encode and store a DISCONNECT control packet.
@@ -215,9 +212,6 @@ class CONNECT(object):
         self.password    = None
         self.cleanStart  = None
         self.version     = None
-
-    def __del__(self):
-        log.debug("RECYCLING a CONNECT object")
 
     def encode(self):
         '''
@@ -312,9 +306,6 @@ class CONNACK(object):
         self.session    = None
         self.resultCode = None 
 
-    def __del__(self):
-        log.debug("RECYCLING a CONNACK object")
-
     def encode(self):
         '''
         Encode and store a CONNACK control packet. 
@@ -353,9 +344,6 @@ class SUBSCRIBE(object):
         self.encoded = None
         self.topics   = None
         self.msgId    = None 
-
-    def __del__(self):
-        log.debug("RECYCLING a SUBSCRIBE(id={id:04x}) object", id=self.msgId)
 
     def encode(self):
         '''
@@ -407,9 +395,6 @@ class SUBACK(object):
         self.msgId   = None
         self.granted = None
 
-    def __del__(self):
-        log.debug("RECYCLING a SUBACK(id={id:04x}) object", id=self.msgId)
-
     def encode(self):
         '''
         Encode and store a SUBACK control packet.
@@ -454,10 +439,6 @@ class UNSUBSCRIBE(object):
         self.encoded = None
         self.msgId   = None
         self.topics  = None
-
-    def __del__(self):
-        log.debug("RECYCLING an UNSUBSCRIBE(id={id:04x}) object", id=self.msgId)
-
 
     def encode(self):
         '''
@@ -505,9 +486,6 @@ class UNSUBACK(object):
         self.encoded = None
         self.msgId   = None
 
-    def __del__(self):
-        log.debug("RECYCLING an UNSUBACK(id={id:04x}) object", id=self.msgId)
-
     def encode(self):
         '''
         Encode and store an UNSUBACK control packet
@@ -546,12 +524,6 @@ class PUBLISH(object):
         self.topic   = None
         self.msgId   = None
         self.payload = None
-
-    def __del__(self):
-        if self.msgId:
-            log.debug("RECYCLING a PUBLISH(id={id:04x}) object", id=self.msgId)
-        else:
-            log.debug("RECYCLING a PUBLISH(id={id}) object", id=self.msgId)
 
     def encode(self):
         '''
@@ -616,9 +588,6 @@ class PUBACK(object):
         self.encoded = None
         self.msgId   = None
 
-    def __del__(self):
-        log.debug("RECYCLING a PUBACK(id={id:04x}) object", id=self.msgId)
-
     def encode(self):
         '''
         Encode and store a PUBACK control packet
@@ -652,9 +621,6 @@ class PUBREC(object):
     def __init__(self):
         self.encoded = None
         self.msgId   = None
-
-    def __del__(self):
-        log.debug("RECYCLING a PUBREC(id={id:04x}) object", id=self.msgId)
 
     def encode(self):
         '''
@@ -691,9 +657,6 @@ class PUBREL(object):
         self.msgId   = None
         self.dup     = None
 
-    def __del__(self):
-        log.debug("RECYCLING a PUBREL(id={id:04x}) object", id=self.msgId)
-
     def encode(self):
         '''
         Encode and store a PUBREL control packet
@@ -729,9 +692,6 @@ class PUBCOMP(object):
         self.encoded = None
         self.msgId    = None
         
-    def __del__(self):
-        log.debug("RECYCLING a PUBCOMP(id={id:04x}) object", id=self.msgId)
-
     def encode(self):
         '''
         Encode and store a PUBCOMP control packet
