@@ -37,7 +37,7 @@ from twisted.logger   import Logger
 # Own modules
 # -----------
 
-from ..          import v31
+from ..          import v31, PY2
 from ..pdu       import PUBLISH, PUBREL
 from .interfaces import IMQTTPublisher
 from .base       import MQTTBaseProtocol, MQTTWindowError 
@@ -261,7 +261,7 @@ class MQTTProtocol(MQTTBaseProtocol):
             log.debug("==> {packet:7} (id={request.msgId} qos={request.qos} dup={dup})", packet="PUBLISH", request=request, dup=dup)
         else:
             log.debug("==> {packet:7} (id={request.msgId:04x} qos={request.qos} dup={dup})", packet="PUBLISH", request=request, dup=dup)
-        self.transport.write(request.encoded)
+        self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
 
     # --------------------------------------------------------------------------
 
@@ -275,7 +275,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         reply.alarm = self.callLater(
             reply.interval(), self._pubrelError, reply)
         log.debug("==> {packet:7} (id={reply.msgId:04x} dup={dup})", packet="PUBREL", reply=reply, dup=dup)
-        self.transport.write(reply.encoded)
+        self.transport.write(str(reply.encoded) if PY2 else bytes(reply.encoded))
 
     # --------------------------------------------------------------------------
 

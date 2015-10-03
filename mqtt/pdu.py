@@ -38,7 +38,7 @@ from twisted.logger import Logger
 # Own modules
 # -----------
 
-from . import v31, v311
+from . import PY2, v31, v311
 log = Logger()
 
 
@@ -135,7 +135,7 @@ class DISCONNECT(object):
         header    = bytearray(2)
         header[0] = 0xE0
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''
@@ -158,7 +158,7 @@ class PINGREQ(object):
         header    = bytearray(2)
         header[0] = 0xC0
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''
@@ -181,7 +181,7 @@ class PINGRES(object):
         header    = bytearray(2)
         header[0] = 0xD0
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''
@@ -244,7 +244,7 @@ class CONNECT(object):
         header.extend(varHeader)
         header.extend(payload)
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''
@@ -310,7 +310,7 @@ class CONNACK(object):
         header.extend(encodeLength(len(varHeader)))
         header.extend(varHeader)
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''
@@ -350,7 +350,7 @@ class SUBSCRIBE(object):
         header.extend(varHeader)
         header.extend(payload)
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''
@@ -396,7 +396,7 @@ class SUBACK(object):
         header.extend(varHeader)
         header.extend(payload)
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
 
     def decode(self, packet):
@@ -440,7 +440,7 @@ class UNSUBSCRIBE(object):
         header.extend(varHeader)
         header.extend(payload)
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''
@@ -479,7 +479,7 @@ class UNSUBACK(object):
         header.extend(encodeLength(len(varHeader)))
         header.extend(varHeader)
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''
@@ -537,7 +537,7 @@ class PUBLISH(object):
         header.extend(varHeader)
         header.extend(payload)
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''
@@ -579,7 +579,7 @@ class PUBACK(object):
         header.extend(encodeLength(len(varHeader)))
         header.extend(varHeader)
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''
@@ -611,7 +611,7 @@ class PUBREC(object):
         header.extend(encodeLength(len(varHeader)))
         header.extend(varHeader)
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''
@@ -644,7 +644,7 @@ class PUBREL(object):
         header.extend(encodeLength(len(varHeader)))
         header.extend(varHeader)
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''
@@ -677,7 +677,7 @@ class PUBCOMP(object):
         header.extend(encodeLength(len(varHeader)))
         header.extend(varHeader)
         self.encoded = header
-        return header
+        return str(header) if PY2 else bytes(header)
 
     def decode(self, packet):
         '''

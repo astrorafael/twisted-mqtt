@@ -41,7 +41,7 @@ from twisted.logger   import Logger
 # Own modules
 # -----------
 
-from ..          import v31
+from ..          import v31, PY2
 from ..pdu       import SUBSCRIBE, UNSUBSCRIBE, PUBACK, PUBREC, PUBCOMP
 from .interfaces import IMQTTSubscriber
 from .base       import MQTTBaseProtocol, MQTTWindowError, ConnectedState as BaseConnectedState
@@ -188,7 +188,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         reply.msgId = response.msgId
         reply.encode()
         log.debug("<== {packet:7} (id={response.msgId:04})" , packet="PUBCOMP", response=response)
-        self.transport.write(reply.encoded)
+        self.transport.write(reply.encode())
 
     # --------------------------
     # Twisted Protocol Interface
@@ -278,7 +278,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         request.alarm = self.callLater(
             interval, self._subscribeError, request)
         log.debug("==> {packet:7} (id={request.msgId:04x} dup={dup})", packet="SUBSCRIBE", request=request, dup=dup)
-        self.transport.write(request.encoded)
+        self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
 
     # --------------------------------------------------------------------------
 
@@ -292,7 +292,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         request.alarm = self.callLater(
             interval, self._unsubscribeError, request)
         log.debug("==> {packet:7} (id={request.msgId:04x} dup={dup})", packet="UNSUBSCRIBE", request=request, dup=dup)
-        self.transport.write(request.encoded)
+        self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
 
     # --------------------------------------------------------------------------
 

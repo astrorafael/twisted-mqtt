@@ -300,7 +300,7 @@ class MQTTBaseProtocol(Protocol):
         self._pingReq       = PINGREQ() 
         self._pingReq.timer = None
         self._pingReq.alarm = None
-        self._pingReq.encode()    # reuses the same PDU over and over again
+        self._pingReq.pdu   = self._pingReq.encode()    # reuses the same PDU over and over again
 
  # ------------------------------------------------------------------------
 
@@ -623,8 +623,7 @@ class MQTTBaseProtocol(Protocol):
         '''
         log.debug("==> {packet:7}",packet="DISCONNECT")
         request.deferred = defer.succeed(True)
-        request.encode()
-        self.transport.write(request.encoded)
+        self.transport.write(request.encode())
         self.transport.loseConnection()
         return request.deferred
 
@@ -641,13 +640,13 @@ class MQTTBaseProtocol(Protocol):
 
         try:
             self._checkConnect(request)
-            request.encode()
+            pdu = request.encode()
         except ValueError as e:
             return defer.fail(e)
         log.debug("==> {packet:7} (id={id} keepalive={keepalive} clean={clean})", packet="CONNECT", id=request.clientId, keepalive=request.keepalive, clean=request.cleanStart)
         self._cleanStart = request.cleanStart
         self._version    = request.version
-        self.transport.write(request.encoded)
+        self.transport.write(pdu)
         # Changes state and returns deferred
         MQTTBaseProtocol.state = self.CONNECTING
         request.alarm = self.callLater(request.keepalive or 10, connectError)
@@ -660,7 +659,7 @@ class MQTTBaseProtocol(Protocol):
     def doPingRequest(self):
 
         log.debug("==> {packet:7}", packet="PINGREQ")
-        self.transport.write(self._pingReq.encoded)
+        self.transport.write(self._pingReq.pdu)
         self._pingReq.alarm = self.callLater(
             self._pingReq.keepalive, 
             self.transport.loseConnection
