@@ -39,7 +39,7 @@ from mqtt.client.base       import MQTTBaseProtocol, MQTTWindowError
 
 
 
-class TestMQTTSubscriber1(unittest.TestCase):
+class TestMQTTPublisher1(unittest.TestCase):
 
 
     def setUp(self):
@@ -275,9 +275,98 @@ class TestMQTTSubscriber1(unittest.TestCase):
         self.assertEqual(len(self.protocol.factory.queuePubRelease), 0)
 
 
+class TestMQTTPublisherDisconnect(unittest.TestCase):
+    '''
+    Testing various cases of disconnect callback
+    '''
 
+    def setUp(self):
+        '''
+        Set up a connencted state
+        '''
+        self.transport = proto_helpers.StringTransportWithDisconnection()
+        self.clock     = task.Clock()
+        MQTTBaseProtocol.callLater = self.clock.callLater
+        self.factory   = MQTTFactory(MQTTFactory.PUBLISHER)
+        self._rebuild()
+        self.disconnected = False
 
+    def _connect(self, cleanStart=True):
+        '''
+        Go to connected state
+        '''
+        ack = CONNACK()
+        ack.session = False
+        ack.resultCode = 0
+        ack.encode()
+        self.protocol.connect("TwistedMQTT-pub", keepalive=0, cleanStart=cleanStart, version=v31)
+        self.transport.clear()
+        self.protocol.dataReceived(ack.encoded)
 
+    def _disconnected(self, reason):
+        self.disconnected = True
 
-    
-    
+    def _serverDown(self):
+        self.transport.loseConnection()
+        self.transport.clear()
+        del self.protocol
+
+    def _rebuild(self):
+        self.protocol  = self.factory.buildProtocol(0)
+        self.transport.protocol = self.protocol
+        MQTTBaseProtocol.callLater = self.clock.callLater
+        self.protocol.makeConnection(self.transport)
+
+    def test_disconnect_1(self):
+        '''Just connect and lose the transport'''
+        self._connect()
+        self.protocol.setDisconnectCallback(self._disconnected)
+        self.transport.loseConnection()
+        self.assertEqual(self.disconnected, True)
+
+    def test_disconnect_2(self):
+        '''connect and disconnect'''
+        self._connect()
+        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.disconnect()
+        self.assertEqual(self.disconnected, True)
+
+    def test_disconnect_3(self):
+        '''connect, generate a deferred and lose the transport'''
+        self._connect()
+        self.protocol.setDisconnectCallback(self._disconnected)
+        d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
+        self.transport.clear()
+        self.transport.loseConnection()
+        self.assertEqual(self.disconnected, False)
+        self.failureResultOf(d).trap(error.ConnectionDone)
+
+    def test_disconnect_4(self):
+        '''connect, generate a deferred and disconnect'''
+        self._connect()
+        self.protocol.setDisconnectCallback(self._disconnected)
+        d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
+        self.transport.clear()
+        self.protocol.disconnect()
+        self.assertEqual(self.disconnected, False)
+        self.failureResultOf(d).trap(error.ConnectionDone)
+
+    def test_disconnect_5(self):
+        '''connect with persistent session, generate a deferred and disconnect'''
+        self._connect(cleanStart=False)
+        self.protocol.setDisconnectCallback(self._disconnected)
+        d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
+        self.transport.clear()
+        self.protocol.disconnect()
+        self.assertEqual(self.disconnected, True)
+        self.assertNoResult(d)
+
+    def test_disconnect_6(self):
+        '''connect with persistent session, generate a deferred , rebuilds protocol'''
+        self._connect(cleanStart=False)
+        self.protocol.setDisconnectCallback(self._disconnected)
+        d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
+        self._serverDown()
+        self._rebuild()
+        self.assertEqual(self.disconnected, True)
+        self.assertNoResult(d)

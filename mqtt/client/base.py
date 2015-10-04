@@ -108,7 +108,7 @@ class BaseState(object):
         Send a DISCONNECT control packet.
         '''
         state = self.__class__.__name__
-        return defer.fail(MQTTStateError("Unexpected disconnect() operation", state))
+        raise MQTTStateError("Unexpected disconnect() operation", state)
 
 
     def subscribe(self, request):
@@ -232,7 +232,7 @@ class ConnectedState(BaseState):
         '''
         Send a DISCONNECT packet.
         '''
-        return self.protocol.doDisconnect(request)
+        self.protocol.doDisconnect(request)
 
 
     def ping(self):
@@ -301,6 +301,7 @@ class MQTTBaseProtocol(Protocol):
         self._pingReq.timer = None
         self._pingReq.alarm = None
         self._pingReq.pdu   = self._pingReq.encode()    # reuses the same PDU over and over again
+        self._onDisconnect  = None # callback to be invoked
 
  # ------------------------------------------------------------------------
 
@@ -465,7 +466,6 @@ class MQTTBaseProtocol(Protocol):
     
 
     def connectionLost(self, reason):
-        log.debug("<Connection lost> reason={reason!s}", reason=reason)
         if self._pingReq.timer:
             self._pingReq.timer.stop()
             self._pingReq.timer = None
@@ -506,15 +506,7 @@ class MQTTBaseProtocol(Protocol):
         API Entry Point
         '''
         request = DISCONNECT()
-        return self.state.disconnect(request)
-
-    # ------------------------------------------------------------------------
-
-    def setDisconnectCallback(self, callback):
-        '''
-        API Entry Point
-        '''
-        self._discInd = callback
+        self.state.disconnect(request)
 
      # ------------------------------------------------------------------------
 
@@ -529,9 +521,20 @@ class MQTTBaseProtocol(Protocol):
     # --------------------------------------------------------------------------
 
     def setWindowSize(self, n):
+        '''
+        API Entry Point
+        '''
         if n > self.MAX_WINDOW:
             raise ValueError("Window size exceeded max. value", n)
         self._window = min(n, self.MAX_WINDOW)
+
+    # ------------------------------------------------------------------------
+
+    def setDisconnectCallback(self, callback):
+        '''
+        API Entry Point
+        '''
+        self._onDisconnect = callback
 
     # ------------------------------------------------------------------------
 
@@ -622,10 +625,8 @@ class MQTTBaseProtocol(Protocol):
         Performs the actual work of disconnecting
         '''
         log.debug("==> {packet:7}",packet="DISCONNECT")
-        request.deferred = defer.succeed(True)
         self.transport.write(request.encode())
         self.transport.loseConnection()
-        return request.deferred
 
     # ------------------------------------------------------------------------
 

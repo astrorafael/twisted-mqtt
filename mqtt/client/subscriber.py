@@ -196,17 +196,20 @@ class MQTTProtocol(MQTTBaseProtocol):
 
     def connectionLost(self, reason):
         MQTTBaseProtocol.connectionLost(self, reason)
+        # Find out pending deferreds
+        if len(self._queueSubscribe) or len(self._queueUnsubscribe):
+            pendingDeferred = True
+        else:
+            pendingDeferred = False
         # Cancel Alarms first
         for request in self._queueSubscribe:
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
-
         for request in self._queueUnsubscribe:
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
-
         # Then, invoke errbacks anyway, 
         # since we do not persist SUBCRIBE/UNSUBSCRIBE ack state
         while len(self._queueSubscribe):
@@ -215,6 +218,10 @@ class MQTTProtocol(MQTTBaseProtocol):
         while len(self._queueUnsubscribe):
             request = self._queueUnsubscribe.popleft()
             request.deferred.errback(reason)
+        # Invoke disconnect callback if applicable
+        if not pendingDeferred and self._onDisconnect:
+            self._onDisconnect(reason)
+
 
     # ---------------------------
     # State Machine API callbacks

@@ -88,14 +88,37 @@ class IMQTTClientControl(Interface):
         Abstract
         ========
 
-        Send a DISCONNECT packet.
+        Send a DISCONNECT packet and disconenct the transport.
 
         Description
         ===========
 
         The DISCONNECT Packet is the final Control Packet sent from 
         the Client to the Server. It indicates that the Client is 
-        disconnecting cleanly.
+        disconnecting cleanly. This operation is synchronous since we 
+        do not expect a response from the server. A disconnect confirmation
+        can be obtained through the *disconnect indication callback* below.
+
+        Signature
+        =========
+
+        @return: Nothing.
+        '''
+
+    def setDisconnectCallback(callback):
+        '''
+        Abstract
+        ========
+
+        Set a disconnect callback handler.
+
+        Description
+        ===========
+
+        This operation wil install a dicoonnect callback that will be invoked 
+        if the Protocol loses the connection and no pending deferred remains 
+        to invoke its errbacks. This is the only way for clients to be notified 
+        of such situation. 
 
         Signature
         =========

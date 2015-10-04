@@ -99,7 +99,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         self.subscriber = MQTTSubscriberProtocol(factory)
         self.publisher  = MQTTPublisherProtocol(factory)
         # patches the state machine
-        MQTTBaseProtocol.CONNECTED = ConnectedState(self) 
+        MQTTBaseProtocol.CONNECTED = ConnectedState(self)
+        self._nDisconnects = 0  # this is the only extra state
     
     # --------------------------
     # Twisted Protocol Interface
@@ -110,6 +111,17 @@ class MQTTProtocol(MQTTBaseProtocol):
         self.subscriber.transport = self.transport
         self.publisher.transport  = self.transport
 
+    # ---------------------------------
+    # IMQTTClientControl Implementation
+    # ---------------------------------
+
+    def setDisconnectCallback(self, callback):
+        '''
+        API Entry Point
+        '''
+        self._onDisconnect = callback
+        self.subscriber.setDisconnectCallback(self._trapDisconnect)
+        self.publisher.setDisconnectCallback(self._trapDisconnect)
 
     # ---------------------------------
     # IMQTTSubscriber Implementation
@@ -148,7 +160,6 @@ class MQTTProtocol(MQTTBaseProtocol):
     # --------------------------
 
     def connectionLost(self, reason):
-        MQTTBaseProtocol.connectionLost(self, reason)
         self.subscriber.connectionLost(reason)
         self.publisher.connectionLost(reason)
 
@@ -231,6 +242,15 @@ class MQTTProtocol(MQTTBaseProtocol):
         Send PUBLISH control packet
         '''
         return self.publisher.doPublish(request)
+
+    # --------------
+    # Helper methods
+    # --------------
+
+    def _trapDisconnect(self, reason):
+        self._nDisconnects += 1
+        if self._nDisconnects == 2 and self._onDisconnect:
+            self._onDisconnect(reason)
 
 
 __all__ = [MQTTProtocol]

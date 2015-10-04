@@ -190,6 +190,11 @@ class MQTTProtocol(MQTTBaseProtocol):
 
     def connectionLost(self, reason):
         MQTTBaseProtocol.connectionLost(self, reason)
+         # Find out pending deferreds
+        if len(self.factory.queuePubRelease) or len(self.factory.queuePublishTx):
+            pendingDeferred = True
+        else:
+            pendingDeferred = False
         # Cancel Alarms first
         for request in self.factory.queuePublishTx:
             if request.alarm is not None:
@@ -207,8 +212,11 @@ class MQTTProtocol(MQTTBaseProtocol):
             while len(self.factory.queuePublishTx):
                 request = self.factory.queuePublishTx.popleft()
                 request.deferred.errback(reason)
-        
-        
+        # Invoke disconnect callback if applicable
+        log.debug("pendingDeferred={a1}, cleanStart={a2} cback={a3}", a1=pendingDeferred, a2=self._cleanStart, a3=self._onDisconnect)
+        if not (pendingDeferred and self._cleanStart) and self._onDisconnect:
+            self._onDisconnect(reason)
+
 
     # ---------------------------
     # State Machine API callbacks
