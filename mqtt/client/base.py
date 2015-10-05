@@ -496,7 +496,6 @@ class MQTTBaseProtocol(Protocol):
         request.password    = password
         request.cleanStart  = cleanStart
         request.version     = version
-
         return self.state.connect(request)
 
     # ------------------------------------------------------------------------

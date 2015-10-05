@@ -39,10 +39,12 @@ from twisted.logger   import Logger
 
 from .interfaces import IMQTTSubscriber, IMQTTPublisher
 from .base       import MQTTBaseProtocol, MQTTWindowError
-from .base       import ConnectedState as BaseConnectedState
+from .base       import IdleState, ConnectedState as BaseConnectedState
 from .subscriber import MQTTProtocol as MQTTSubscriberProtocol
-from .publisher  import MQTTProtocol as MQTTPublisherProtocol
+from .publisher  import MQTTProtocol as MQTTPublisherProtocol, ConnectingState
 
+
+log = Logger()
 
 # ---------------------------------
 # MQTT Client Connected State Class
@@ -95,22 +97,17 @@ class MQTTProtocol(MQTTBaseProtocol):
     '''
 
     def __init__(self, factory):
-        MQTTBaseProtocol.__init__(self, factory)
+        # order is imporant to patch the states since the
+        # delegats patches teh state as well
         self.subscriber = MQTTSubscriberProtocol(factory)
         self.publisher  = MQTTPublisherProtocol(factory)
-        # patches the state machine
-        MQTTBaseProtocol.CONNECTED = ConnectedState(self)
-        self._nDisconnects = 0  # this is the only extra state
-    
-    # --------------------------
-    # Twisted Protocol Interface
-    # --------------------------
-    
-    def connectionMade(self):
-        # I need to share the transport with my own delegates
-        self.subscriber.transport = self.transport
-        self.publisher.transport  = self.transport
-
+        MQTTBaseProtocol.__init__(self, factory) 
+        # patches and reparent the state machine
+        MQTTBaseProtocol.CONNECTING = ConnectingState(self)
+        MQTTBaseProtocol.CONNECTED  = ConnectedState(self)
+        self._expectedDisc = None  # these two are ethe only extra state
+        self._nDisc        = None  
+       
     # ---------------------------------
     # IMQTTClientControl Implementation
     # ---------------------------------
@@ -160,6 +157,14 @@ class MQTTProtocol(MQTTBaseProtocol):
     # --------------------------
 
     def connectionLost(self, reason):
+        self._expectedDisc = 0
+        self._nDisc        = 0
+        flagPub  = (len(self.factory.queuePubRelease)    or len(self.factory.queuePublishTx)) != 0
+        flagSubs = (len(self.subscriber._queueSubscribe) or len(self.subscriber._queueUnsubscribe)) != 0
+        if not flagSubs:
+            self._expectedDisc += 1
+        if not(flagPub and self._cleanStart):
+            self._expectedDisc += 1
         self.subscriber.connectionLost(reason)
         self.publisher.connectionLost(reason)
 
@@ -172,8 +177,15 @@ class MQTTProtocol(MQTTBaseProtocol):
         Called when a CONNACK has been received.
         Overriden in subscriber/publisher to do additional session sync
         '''
+        # Important to share this with the publisher for disconnections
+        self.publisher._cleanStart = self._cleanStart
+         # I need to share the transport with my own delegates
+        self.subscriber.transport = self.transport
+        self.publisher.transport  = self.transport
+        # propagate this
         self.subscriber.mqttConnectionMade()
         self.publisher.mqttConnectionMade()
+
 
     # -------------------------------
     # Handle traffic form the network
@@ -248,8 +260,8 @@ class MQTTProtocol(MQTTBaseProtocol):
     # --------------
 
     def _trapDisconnect(self, reason):
-        self._nDisconnects += 1
-        if self._nDisconnects == 2 and self._onDisconnect:
+        self._nDisc += 1
+        if self._nDisc == self._expectedDisc and self._onDisconnect:
             self._onDisconnect(reason)
 
 

@@ -103,7 +103,6 @@ class MQTTProtocol(MQTTBaseProtocol):
         # patches the state machine
         MQTTBaseProtocol.CONNECTING = ConnectingState(self) 
         MQTTBaseProtocol.CONNECTED  = ConnectedState(self)   
-        
 
     # -----------------------------
     # IMQTTPublisher Implementation
@@ -213,7 +212,6 @@ class MQTTProtocol(MQTTBaseProtocol):
                 request = self.factory.queuePublishTx.popleft()
                 request.deferred.errback(reason)
         # Invoke disconnect callback if applicable
-        log.debug("pendingDeferred={a1}, cleanStart={a2} cback={a3}", a1=pendingDeferred, a2=self._cleanStart, a3=self._onDisconnect)
         if not (pendingDeferred and self._cleanStart) and self._onDisconnect:
             self._onDisconnect(reason)
 

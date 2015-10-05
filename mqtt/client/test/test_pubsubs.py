@@ -88,6 +88,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         self.protocol.setDisconnectCallback(self._disconnected)
         self.transport.loseConnection()
         self.assertEqual(self.disconnected, 1)
+        self.assertEqual(self.protocol._expectedDisc, 2)
 
     def test_disconnect_2(self):
         '''connect and disconnect'''
@@ -95,6 +96,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         self.protocol.setDisconnectCallback(self._disconnected)
         self.protocol.disconnect()
         self.assertEqual(self.disconnected, 1)
+        self.assertEqual(self.protocol._expectedDisc, 2)
 
     def test_disconnect_3(self):
         '''connect, generate a deferred and lose the transport'''
@@ -103,8 +105,9 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
         self.transport.clear()
         self.transport.loseConnection()
-        self.assertEqual(self.disconnected, 0)
+        self.assertEqual(self.disconnected, 1)
         self.failureResultOf(d).trap(error.ConnectionDone)
+        self.assertEqual(self.protocol._expectedDisc, 1)
 
     def test_disconnect_4(self):
         '''connect, generate a deferred and disconnect'''
@@ -113,8 +116,9 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
         self.transport.clear()
         self.protocol.disconnect()
-        self.assertEqual(self.disconnected, 0)
+        self.assertEqual(self.disconnected, 1)
         self.failureResultOf(d).trap(error.ConnectionDone)
+        self.assertEqual(self.protocol._expectedDisc, 1)
 
     def test_disconnect_5(self):
         '''connect with persistent session, generate a deferred and disconnect'''
@@ -125,6 +129,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         self.protocol.disconnect()
         self.assertEqual(self.disconnected, 1)
         self.assertNoResult(d)
+        self.assertEqual(self.protocol._expectedDisc, 2)
 
     def test_disconnect_6(self):
         '''connect with persistent session, generate a deferred , rebuilds protocol'''
@@ -135,3 +140,110 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         self._rebuild()
         self.assertEqual(self.disconnected, 1)
         self.assertNoResult(d)
+        self.assertEqual(self.protocol._expectedDisc, None)
+
+
+class TestMQTTSubscriberDisconnect(unittest.TestCase):
+    '''
+    Testing various cases of disconnect callback
+    '''
+
+    def setUp(self):
+        '''
+        Set up a connencted state
+        '''
+        self.transport = proto_helpers.StringTransportWithDisconnection()
+        self.clock     = task.Clock()
+        MQTTBaseProtocol.callLater = self.clock.callLater
+        self.factory   = MQTTFactory(MQTTFactory.PUBLISHER | MQTTFactory.SUBSCRIBER)
+        self._rebuild()
+        self.disconnected = 0
+
+    def _connect(self, cleanStart=True):
+        '''
+        Go to connected state
+        '''
+        ack = CONNACK()
+        ack.session = False
+        ack.resultCode = 0
+        ack.encode()
+        self.protocol.connect("TwistedMQTT-sub", keepalive=0, cleanStart=cleanStart, version=v31)
+        self.transport.clear()
+        self.protocol.dataReceived(ack.encoded)
+
+    def _disconnected(self, reason):
+        self.disconnected += 1
+
+    def _rebuild(self):
+        self.protocol  = self.factory.buildProtocol(0)
+        self.transport.protocol = self.protocol
+        MQTTBaseProtocol.callLater = self.clock.callLater
+        self.protocol.makeConnection(self.transport)
+
+    def _serverDown(self):
+        self.transport.loseConnection()
+        self.transport.clear()
+        del self.protocol
+
+    def test_disconnect_1(self):
+        '''Just connect and lose the transport'''
+        self._connect()
+        self.protocol.setDisconnectCallback(self._disconnected)
+        self.transport.loseConnection()
+        self.assertEqual(self.disconnected, 1)
+        self.assertEqual(self.protocol._expectedDisc, 2)
+
+    def test_disconnect_2(self):
+        '''connect and disconnect'''
+        self._connect()
+        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.disconnect()
+        self.assertEqual(self.disconnected, 1)
+        self.assertEqual(self.protocol._expectedDisc, 2)
+
+    def test_disconnect_3(self):
+        '''connect, generate a deferred and lose the transport'''
+        self._connect()
+        self.protocol.setDisconnectCallback(self._disconnected)
+        d = self.protocol.subscribe("foo/bar/baz1", 2 )
+        self.transport.clear()
+        self.transport.loseConnection()
+        self.assertEqual(self.disconnected, 1)
+        self.assertEqual(self.protocol._expectedDisc, 1)
+        self.failureResultOf(d).trap(error.ConnectionDone)
+
+    def test_disconnect_4(self):
+        '''connect, generate a deferred and disconnect'''
+        self._connect()
+        self.protocol.setDisconnectCallback(self._disconnected)
+        d = self.protocol.subscribe("foo/bar/baz1", 2 )
+        self.transport.clear()
+        self.protocol.disconnect()
+        self.assertEqual(self.disconnected, 1)
+        self.assertEqual(self.protocol._expectedDisc, 1)
+        self.failureResultOf(d).trap(error.ConnectionDone)
+
+    def test_disconnect_5(self):
+        '''connect with persistent session, generate a deferred and disconnect
+        Note: the subscriber has no persistent data'''
+        self._connect(cleanStart=False)
+        self.protocol.setDisconnectCallback(self._disconnected)
+        d = self.protocol.subscribe("foo/bar/baz1", 2 )
+        self.transport.clear()
+        self.protocol.disconnect()
+        self.assertEqual(self.disconnected, 1)
+        self.assertEqual(self.protocol._expectedDisc, 1)
+        self.failureResultOf(d).trap(error.ConnectionDone)
+
+    def test_disconnect_6(self):
+        '''connect with persistent session, generate a deferred , rebuilds protocol
+        Note: the subscriber has no persistent data'''
+        self._connect(cleanStart=False)
+        self.protocol.setDisconnectCallback(self._disconnected)
+        d = self.protocol.subscribe("foo/bar/baz1", 2 )
+        self._serverDown()
+        self._rebuild()
+        self.assertEqual(self.disconnected, 1)
+        self.assertEqual(self.protocol._expectedDisc, None)
+        self.failureResultOf(d).trap(error.ConnectionDone)
+
