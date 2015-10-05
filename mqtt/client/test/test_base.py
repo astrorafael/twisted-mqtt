@@ -111,15 +111,8 @@ class TestMQTTBaseProtocol2(unittest.TestCase):
     def test_disconnect(self):
         self._connect()
         self.assertEqual(self.protocol.state, MQTTBaseProtocol.CONNECTED)
-        d = self.protocol.disconnect()
+        self.protocol.disconnect()
         self.transport.clear()
-        self.assertEqual(self.successResultOf(d), True)
-
-    def test_disconnectInd(self):
-        self._connect()
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.CONNECTED)
-        self.transport.loseConnection()
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
 
     def test_ping(self):
         self._connect(keepalive=5)

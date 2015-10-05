@@ -24,18 +24,17 @@
 from twisted.trial    import unittest
 from twisted.test     import proto_helpers
 from twisted.internet import task, defer, error
-from twisted.python   import log
 
 
-
-from mqtt import v31
-from mqtt.pdu import CONNACK, SUBSCRIBE, SUBACK, UNSUBACK, PUBLISH, PUBREL
+from mqtt                   import v31
+from mqtt.error             import MQTTWindowError
+from mqtt.pdu               import CONNACK, SUBSCRIBE, SUBACK, UNSUBACK, PUBLISH, PUBREL
 from mqtt.client.factory    import MQTTFactory
+from mqtt.client.base       import MQTTBaseProtocol
 from mqtt.client.subscriber import MQTTProtocol as MQTTSubscriberProtocol
 from mqtt.client.publisher  import MQTTProtocol as MQTTPublisherProtocol
 from mqtt.client.pubsubs    import MQTTProtocol as MQTTPubSubsProtocol
 
-from mqtt.client.base       import MQTTBaseProtocol, MQTTWindowError
 
 
 

@@ -38,9 +38,10 @@ from twisted.logger   import Logger
 # -----------
 
 from ..          import v31, PY2
+from ..error     import MQTTWindowError
 from ..pdu       import PUBLISH, PUBREL
 from .interfaces import IMQTTPublisher
-from .base       import MQTTBaseProtocol, MQTTWindowError 
+from .base       import MQTTBaseProtocol 
 from .base       import ConnectingState as BaseConnectingState, ConnectedState as BaseConnectedState
 from .interval   import Interval
 

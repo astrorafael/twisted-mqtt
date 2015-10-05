@@ -38,7 +38,7 @@ from twisted.logger   import Logger
 # -----------
 
 from .interfaces import IMQTTSubscriber, IMQTTPublisher
-from .base       import MQTTBaseProtocol, MQTTWindowError
+from .base       import MQTTBaseProtocol
 from .base       import IdleState, ConnectedState as BaseConnectedState
 from .subscriber import MQTTProtocol as MQTTSubscriberProtocol
 from .publisher  import MQTTProtocol as MQTTPublisherProtocol, ConnectingState
