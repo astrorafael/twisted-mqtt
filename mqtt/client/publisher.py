@@ -315,8 +315,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         if len(self.factory.queuePublishTx) + len(self.factory.queuePubRelease) == self._window:
             raise MQTTWindowError("unsubscription requests exceeded limit", self._window)
     
-        if not ( 0<= request.qos <= 3):
-            raise ValueError("Publish QoS out of [0..3] range", request.qos)
+        if not ( 0<= request.qos < 3):
+            raise ValueError("Publish QoS out of [0,1,2] range", request.qos)
     
     # --------------------------------------------------------------------------
 

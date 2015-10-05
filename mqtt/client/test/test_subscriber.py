@@ -106,6 +106,16 @@ class TestMQTTSubscriber1(unittest.TestCase):
         self.protocol.dataReceived(ack.encode())
         self.assertEqual([(2, False)], self.successResultOf(d))
 
+    def test_subscribe_single_large_qos(self):
+        d = self.protocol.subscribe("foo/bar/baz1", 3)
+        self.transport.clear()
+        self.failureResultOf(d).trap(ValueError)
+
+    def test_subscribe_single_negative_qos(self):
+        d = self.protocol.subscribe("foo/bar/baz1", -1)
+        self.transport.clear()
+        self.failureResultOf(d).trap(ValueError)
+
     def test_subscribe_tuple(self):
         d = self.protocol.subscribe( ("foo/bar/baz1", 2) )
         self.transport.clear()

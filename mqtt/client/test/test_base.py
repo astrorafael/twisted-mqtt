@@ -27,7 +27,7 @@ from twisted.internet import task, error
 from twisted.python   import log
 
 
-from mqtt import v31
+from mqtt import v31, v311
 from mqtt.pdu import CONNACK, PINGREQ, PINGRES
 from mqtt.client.factory    import MQTTFactory
 from mqtt.client.subscriber import MQTTProtocol as MQTTSubscriberProtocol
@@ -127,5 +127,90 @@ class TestMQTTBaseProtocol2(unittest.TestCase):
         self.clock.advance(6)
         self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
         
-        
+class TestMQTTBaseExceptions(unittest.TestCase):
+
+    def setUp(self):
+        self.transport = proto_helpers.StringTransportWithDisconnection()
+        self.clock     = task.Clock()
+        self.factory   = MQTTFactory(MQTTFactory.PUBLISHER)
+        self.protocol  = MQTTBaseProtocol(self.factory)
+        self.transport.protocol = self.protocol
+        MQTTBaseProtocol.callLater = self.clock.callLater
+        self.protocol.makeConnection(self.transport)
+       
+
+    def test_connect_version(self):
+        clientId="1234567890ABCDEFGHIJ1234567890"
+        d = self.protocol.connect(clientId, keepalive=0, version=0)
+        self.failureResultOf(d).trap(ValueError)
+        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+
+    def test_connect_client_id_v31(self):
+        clientId="1234567890ABCDEFGHIJ1234567890"
+        d = self.protocol.connect(clientId, keepalive=0, version=v31)
+        self.failureResultOf(d).trap(ValueError)
+        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+
+    def test_connect_client_id_v311(self):
+        clientId="1234567890ABCDEFGHIJ1234567890"*3000
+        d = self.protocol.connect(clientId, keepalive=0, version=v311)
+        self.failureResultOf(d).trap(ValueError)
+        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+
+    def test_connect_keepalive_negative(self):
+        clientId="1234567890A"
+        d = self.protocol.connect(clientId, keepalive=-1, version=v31)
+        self.failureResultOf(d).trap(ValueError)
+        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+
+    def test_connect_keepalive_large(self):
+        clientId="1234567890A"
+        d = self.protocol.connect(clientId, keepalive=65537, version=v31)
+        self.failureResultOf(d).trap(ValueError)
+        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+
+    def test_connect_will_qos_large(self):
+        clientId="1234567890A"
+        d = self.protocol.connect(clientId, keepalive=0, version=v31, willQoS=5)
+        self.failureResultOf(d).trap(ValueError)
+        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+
+    def test_connect_will_qos_negative(self):
+        clientId="1234567890A"
+        d = self.protocol.connect(clientId, keepalive=0, version=v31, willQoS=-1)
+        self.failureResultOf(d).trap(ValueError)
+        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+
+    def test_connect_no_username_with_password(self):
+        clientId="1234567890A"
+        d = self.protocol.connect(clientId, keepalive=0, version=v31, password="foo")
+        self.failureResultOf(d).trap(ValueError)
+        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+    
+    def test_connect_will_topic_no_message(self):
+        clientId="1234567890A"
+        d = self.protocol.connect(clientId, keepalive=0, version=v31, willTopic="foo/bar")
+        self.failureResultOf(d).trap(ValueError)
+        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+
+    def test_connect_will_message_no_topic(self):
+        clientId="1234567890A"
+        d = self.protocol.connect(clientId, keepalive=0, version=v31, willMessage="Hello")
+        self.failureResultOf(d).trap(ValueError)
+        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+    
+    def test_window_size_large(self):
+        self.assertRaises(ValueError, self.protocol.setWindowSize, 32)
+
+    def test_window_size_negative(self):
+        self.assertRaises(ValueError, self.protocol.setWindowSize, -1)
+
+    def test_timeout_large(self):
+        self.assertRaises(ValueError, self.protocol.setTimeout, 65536)
+
+    def test_timeout_negative(self):
+        self.assertRaises(ValueError, self.protocol.setTimeout, -1)
+   
+       
+ 
         

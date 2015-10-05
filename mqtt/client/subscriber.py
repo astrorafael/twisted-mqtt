@@ -338,8 +338,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         if not isinstance(request.topics, list):
             raise TypeError("Invalid parameter type 'topic'", type(topic))
         for (topic, qos) in request.topics:
-            if not ( 0<= qos <= 3):
-                raise ValueError("Last Will QoS out of [0..3] range", qos)
+            if not ( 0<= qos < 3):
+                raise ValueError("Last Will QoS out of [0,1,2] range", qos)
 
     # --------------------------------------------------------------------------
 
