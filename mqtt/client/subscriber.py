@@ -42,7 +42,7 @@ from twisted.logger   import Logger
 # -----------
 
 from ..          import v31, PY2
-from ..error     import MQTTWindowError
+from ..error     import MQTTWindowError, QoSValueError, TopicTypeError
 from ..pdu       import SUBSCRIBE, UNSUBSCRIBE, PUBACK, PUBREC, PUBCOMP
 from .interfaces import IMQTTSubscriber
 from .base       import MQTTBaseProtocol,  ConnectedState as BaseConnectedState
@@ -336,10 +336,10 @@ class MQTTProtocol(MQTTBaseProtocol):
         if len(self._queueSubscribe) == self._window:
             raise MQTTWindowError("subscription requests exceeded limit", self._window)
         if not isinstance(request.topics, list):
-            raise TypeError("Invalid parameter type 'topic'", type(topic))
+            raise TopicTypeError(type(topic))
         for (topic, qos) in request.topics:
             if not ( 0<= qos < 3):
-                raise ValueError("Last Will QoS out of [0,1,2] range", qos)
+                raise QoSValueError("subscribe", qos)
 
     # --------------------------------------------------------------------------
 
@@ -350,7 +350,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         if len(self._queueUnsubscribe) == self._window:
             raise MQTTWindowError("unsubscription requests exceeded limit", self._window)
         if not isinstance(request.topics, list):
-            raise TypeError("Invalid parameter type 'topic'", type(topic))
+            raise TopicTypeError(type(topic))
 
 
     # --------------------------------------------------------------------------

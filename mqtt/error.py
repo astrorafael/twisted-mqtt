@@ -21,25 +21,130 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # ----------------------------------------------------------------------
 
-class QoSError(ValueError):
+class QoSValueError(ValueError):
     '''QoS value not within [0..3] range'''
     def __str__(self):
         s = self.__doc__
         if self.args:
-            s = '{0}: {1!s} {2}'.format(s, self.args[0], 
-                                         ' '.join(self.args[1:]))
+            s = '{0}: {1} {2}'.format(s, self.args[0], self.args[1])
         s = '{0}.'.format(s)
         return s
 
-class PayloadEncodingError(ValueError):
-    '''Unknown payload encoding'''
+class KeepaliveValueError(ValueError):
+    '''Keepalive value out of range'''
     def __str__(self):
         s = self.__doc__
         if self.args:
-            s = "{0}: '{1}' for {2!s}".format(s, self.args[0], self.args[1])
+            s = '{0}: {1}'.format(s, self.args[0])
         s = '{0}.'.format(s)
         return s
 
+class ClientIdValueError(ValueError):
+    '''Client id string length out of range'''
+    def __str__(self):
+        s = self.__doc__
+        if self.args:
+            s = '{0}: {1}'.format(s, self.args[0])
+        s = '{0}.'.format(s)
+        return s
+
+class ProtocolValueError(ValueError):
+    '''Incorrect protocol version'''
+    def __str__(self):
+        s = self.__doc__
+        if self.args:
+            s = '{0}: {1!s}'.format(s, self.args[0])
+        s = '{0}.'.format(s)
+        return s
+
+class MissingTopicError(ValueError):
+    '''Missing topic'''
+    def __str__(self):
+        s = self.__doc__
+        if self.args:
+            s = '{0}: in {1}'.format(s, self.args[0])
+        s = '{0}.'.format(s)
+        return s
+
+class MissingPayloadError(ValueError):
+    '''Missing payload'''
+    def __str__(self):
+        s = self.__doc__
+        if self.args:
+            s = '{0}: in {1}'.format(s, self.args[0])
+        s = '{0}.'.format(s)
+        return s
+
+class MissingUserError(ValueError):
+    '''Missing username in connect'''
+    def __str__(self):
+        s = self.__doc__
+        return s
+
+
+class TimeoutValueError(ValueError):
+    '''Protocol timeout value out of range'''
+    def __str__(self):
+        s = self.__doc__
+        if self.args:
+            s = "{0}: {1}".format(s, self.args[0])
+        s = '{0}.'.format(s)
+        return s
+
+class WindowValueError(ValueError):
+    '''Max. number of allowed in-flight messages out of range'''
+    def __str__(self):
+        s = self.__doc__
+        if self.args:
+            s = "{0}: {1}".format(s, self.args[0])
+        s = '{0}.'.format(s)
+        return s
+
+
+class ProfileValueError(ValueError):
+    '''MQTT client profile value not supported'''
+    def __str__(self):
+        s = self.__doc__
+        if self.args:
+            s = "{0}: {1}".format(s, self.args[0])
+        s = '{0}.'.format(s)
+        return s
+
+class PayloadValueError(ValueError):
+    '''Payload too large'''
+    def __str__(self):
+        s = self.__doc__
+        if self.args:
+            s = "{0}: {1}".format(s, self.args[0])
+        s = '{0}.'.format(s)
+        return s
+
+class StringValueError(ValueError):
+    '''MQTT strings exceeds 65535 bytes'''
+    def __str__(self):
+        s = self.__doc__
+        if self.args:
+            s = "{0}: {1}".format(s, self.args[0])
+        s = '{0}.'.format(s)
+        return s
+
+class TopicTypeError(TypeError):
+    '''Subscribe topic type is not a list'''
+    def __str__(self):
+        s = self.__doc__
+        if self.args:
+            s = "{0}: {1!s}".format(s, self.args[0])
+        s = '{0}.'.format(s)
+        return s
+
+class PayloadTypeError(TypeError):
+    '''Type not allowed as payload'''
+    def __str__(self):
+        s = self.__doc__
+        if self.args:
+            s = "{0}: {1!s}".format(s, self.args[0])
+        s = '{0}.'.format(s)
+        return s
 
 class MQTTError(Exception):
     '''Base class for all exceptions below'''

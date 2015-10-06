@@ -38,9 +38,11 @@ from twisted.logger import Logger
 # Own modules
 # -----------
 
-from . import PY2, v31, v311
-log = Logger()
+from .     import PY2, v31, v311
+from .error import StringValueError, PayloadValueError, PayloadTypeError
 
+
+log = Logger()
 
 # ---------------------------------------
 # MQTT Encoding/Decoding Helper functions
@@ -55,7 +57,7 @@ def encodeString(string):
     encoded.extend(bytearray(string, encoding='utf-8'))
     l = len(encoded)-2
     if(l > 65535):
-        raise ValueError("Encoded string exceeds 65535", l)
+        raise StringValueError(l)
     encoded[0] = l >> 8
     encoded[1] = l & 0xFF
     return encoded
@@ -529,10 +531,10 @@ class PUBLISH(object):
         elif isinstance(self.payload, str):
             payload.extend(bytearray(self.payload, encoding='utf-8'))
         else:
-            raise TypeError('Type not suited as payload for MQTT transmission, use struct and pack first', type(self.payload))
+            raise PayloadTypeError(type(self.payload))
         totalLen = len(varHeader) + len(payload)
         if totalLen > 268435455:
-            raise ValueError("PUBLISH Packet length > 268435455", totalLen)
+            raise PayloadValueError(totalLen)
         header.extend(encodeLength(totalLen))
         header.extend(varHeader)
         header.extend(payload)

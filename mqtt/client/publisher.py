@@ -38,7 +38,7 @@ from twisted.logger   import Logger
 # -----------
 
 from ..          import v31, PY2
-from ..error     import MQTTWindowError
+from ..error     import MQTTWindowError, QoSValueError
 from ..pdu       import PUBLISH, PUBREL
 from .interfaces import IMQTTPublisher
 from .base       import MQTTBaseProtocol 
@@ -316,7 +316,7 @@ class MQTTProtocol(MQTTBaseProtocol):
             raise MQTTWindowError("unsubscription requests exceeded limit", self._window)
     
         if not ( 0<= request.qos < 3):
-            raise ValueError("Publish QoS out of [0,1,2] range", request.qos)
+            raise QoSValueError("publish()",request.qos)
     
     # --------------------------------------------------------------------------
 

@@ -39,7 +39,8 @@ from twisted.logger import Logger
 # Own modules
 # -----------
 
-from .. import __version__
+from ..      import __version__
+from ..error import ProfileValueError
 
 log = Logger()
 
@@ -68,7 +69,7 @@ class MQTTFactory(ReconnectingClientFactory):
         elif self.profile == (self.SUBSCRIBER | self.PUBLISHER):
             from mqtt.client.pubsubs import MQTTProtocol
         else:
-            raise ValueError("profile value not supported" , self.profile)
+            raise ProfileValueError("profile value not supported" , self.profile)
         
         return MQTTProtocol(self)
 

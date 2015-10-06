@@ -68,7 +68,9 @@ from twisted.python   import failure
 from ..          import v31, v311
 from ..pdu       import decodeLength, DISCONNECT, PINGREQ, CONNECT, CONNACK
 from ..pdu       import SUBACK, UNSUBACK, PUBLISH, PUBREL, PUBACK, PUBREC, PUBCOMP
-from ..error     import MQTTStateError, MQTTWindowError, MQTTTimeoutError
+from ..error     import ( MQTTStateError, MQTTWindowError, MQTTTimeoutError, TimeoutValueError, 
+        QoSValueError, KeepaliveValueError, ClientIdValueError, ProtocolValueError, MissingTopicError,
+        MissingPayloadError, MissingUserError, WindowValueError)
 from .interfaces import IMQTTClientControl
 from .interval   import Interval
 
@@ -514,7 +516,7 @@ class MQTTBaseProtocol(Protocol):
         API Entry Point
         '''
         if not ( 1 <= timeout <= Interval.maxDelay ):
-             raise ValueError("Timeout exceeded max.delay", timeout)
+             raise TimeoutValueError(timeout)
         Interval.initial = timeout
 
     # --------------------------------------------------------------------------
@@ -524,7 +526,7 @@ class MQTTBaseProtocol(Protocol):
         API Entry Point
         '''
         if not (0 < n <= self.MAX_WINDOW):
-            raise ValueError("Window size exceeded max. value", n)
+            raise WindowValueError(n)
         self._window = min(n, self.MAX_WINDOW)
 
     # ------------------------------------------------------------------------
@@ -675,19 +677,19 @@ class MQTTBaseProtocol(Protocol):
         '''
 
         if not ( 0<= request.willQoS < 3):
-            raise ValueError("Last Will QoS out of [0,1,2] range", request.willQoS)
+            raise QoSValueError("last will", request.willQoS)
         if not ( 0 <= request.keepalive <= 65535):
-            raise ValueError("keepalive out of [0..65535] range", request.keepalive)
+            raise KeepaliveValueError(request.keepalive)
         if (request.version == v31) and len(request.clientId) > 23:
-            raise ValueError("Client ID exceed 23 characters", request.clientId)
+            raise ClientIdValueError("Client ID exceed 23 characters", request.clientId)
         if not (request.version == v31 or request.version == v311):
-            raise ValueError("Incorrect protocol version", request.version)
+            raise ProtocolValueError("Incorrect protocol version", request.version)
         if request.willMessage is not None and request.willTopic is None:
-            raise ValueError("Missing Last Will Topic")
+            raise MissingTopicError("Last Will Topic")
         if request.willMessage is None and request.willTopic is not None:
-            raise ValueError("Missing Last Will Message")
+            raise MissingPayloadError("Last Will Message")
         if request.username is None and request.password is not None:
-            raise ValueError("missing username")
+            raise MissingUserError()
 
     # ------------------------------------------------------------------------
 
