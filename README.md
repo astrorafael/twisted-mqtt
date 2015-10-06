@@ -7,7 +7,7 @@ MQTT Client protocol for Twisted.
 Description
 -----------
 
-**twsited-mqtt** is a library using the Twisted framework and implementing
+**twisted-mqtt** is a library using the Twisted framework and implementing
 the MQTT protocol (v3.1 & v3.1.1) in these flavours:
 
 * pure subscriber
@@ -228,7 +228,7 @@ For the time being, I consider this library to be in *Alpha* state.
 TODO
 ----
 
-I wrote this library for my pet projects and learn Twsited. 
+I wrote this library for my pet projects and learn Twisted. 
 However, it goes a long way from an apparently looking good library
 to an industrial-strength, polished product. I don't simply have the time, 
 energy and knowledge to do so. 
