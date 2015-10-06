@@ -1,8 +1,14 @@
 from setuptools import setup, Extension, find_packages
 import versioneer
 
-long_description = ''
+# Default description in markdown
+long_description = open('README.md').read()
  
+# Converts from makrdown to rst using pandoc
+# and its python binding.
+# Docunetation is uploaded in PyPi when registering
+# by issuing `python setup.py register`
+
 try:
     import subprocess
     import pandoc
@@ -20,7 +26,7 @@ try:
     pandoc.core.PANDOC_PATH = pandoc_path
  
     doc = pandoc.Document()
-    doc.markdown = open('README.md').read()
+    doc.markdown = long_description
  
     long_description = doc.rst
  
