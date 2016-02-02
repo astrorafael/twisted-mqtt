@@ -42,7 +42,7 @@ from twisted.logger import Logger
 from ..      import __version__
 from ..error import ProfileValueError
 
-log = Logger()
+log = Logger(namespace='mqtt')
 
 class MQTTFactory(ReconnectingClientFactory):
 

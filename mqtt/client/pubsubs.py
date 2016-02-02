@@ -44,7 +44,7 @@ from .subscriber import MQTTProtocol as MQTTSubscriberProtocol
 from .publisher  import MQTTProtocol as MQTTPublisherProtocol, ConnectingState
 
 
-log = Logger()
+log = Logger(namespace='mqtt')
 
 # ---------------------------------
 # MQTT Client Connected State Class

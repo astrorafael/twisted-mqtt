@@ -84,7 +84,7 @@ MQTT_CONNECT_CODES = [
     "Connection Refused, not authorized",
 ]
 
-log = Logger()
+log = Logger(namespace='mqtt')
 
 
 # ---------------------------------------

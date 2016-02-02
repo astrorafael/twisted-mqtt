@@ -49,7 +49,7 @@ from .base       import MQTTBaseProtocol,  ConnectedState as BaseConnectedState
 from .interval   import Interval
 
 
-log = Logger()
+log = Logger(namespace='mqtt')
 
 # ---------------------------------
 # MQTT Client Connected State Class

@@ -42,7 +42,7 @@ from .     import PY2, v31, v311
 from .error import StringValueError, PayloadValueError, PayloadTypeError
 
 
-log = Logger()
+log = Logger(namespace='mqtt')
 
 # ---------------------------------------
 # MQTT Encoding/Decoding Helper functions
