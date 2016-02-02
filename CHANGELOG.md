@@ -6,3 +6,7 @@ Initial release.
 =====
 Fixed missing README.md
 
+0.1.3
+=====
+Common 'mqtt' namespace for logging. This should help in log fltering.
+
