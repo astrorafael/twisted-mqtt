@@ -25,10 +25,14 @@ from twisted.logger   import (
     Logger, LogLevel, globalLogBeginner, textFileLogObserver, 
     FilteringLogObserver, LogLevelFilterPredicate)
 
+# Global object to export and control namespace logging
+#   using logLevelFilterPredicate.setLogLevelForNamespace(namespace, level):
+logLevelFilterPredicate = None
+
 def startLogging(fileobj, level=LogLevel.debug):
-    fileObserver = textFileLogObserver(fileobj)
-    predicate    = LogLevelFilterPredicate(defaultLogLevel=level)
-    observers    = [ FilteringLogObserver(observer=fileObserver, predicates=[predicate]) ]
+    fileObserver            = textFileLogObserver(fileobj)
+    logLevelFilterPredicate = LogLevelFilterPredicate(defaultLogLevel=level)
+    observers               = [ FilteringLogObserver(observer=fileObserver, predicates=[logLevelFilterPredicate]) ]
     globalLogBeginner.beginLoggingTo(observers)
 
-__all__ = [startLogging]
+__all__ = [startLogging, logLevelFilterPredicate]
