@@ -9,4 +9,5 @@ Fixed missing README.md
 0.1.3
 =====
 Common 'mqtt' namespace for logging. This should help in log fltering.
-
+logger module out fo the library. Logging fucntions now in the examples.
+Changed subscribe() interface description
