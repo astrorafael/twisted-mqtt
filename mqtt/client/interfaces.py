@@ -202,7 +202,8 @@ class IMQTTSubscriber(Interface):
             an UTF-8 string. 0 <= QoS <= 3
         @return: a Deferred, with an extra C{msgId} attribute which you can 
             use to keep track of requests. 
-            The callbacks will be invoked with a list of granted tuples (topic, qos)
+            The callbacks will be invoked with a list of granted tuples (granted qos, failure flag)
+            where False in the failure flag means operation Ok)
         '''
 
     def unsubscribe(topic):
