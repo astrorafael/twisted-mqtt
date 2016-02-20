@@ -580,17 +580,18 @@ class MQTTBaseProtocol(Protocol):
         '''
         # Changes state and execute deferreds
         log.debug("<== {packet:7} (code={code} session={flags})", packet="CONNACK", code=response.resultCode, flags=response.session)
-        MQTTBaseProtocol.state = self.CONNECTED
         request = self.connReq
         request.alarm.cancel()
-        if request.keepalive != 0:
-            self._pingReq.keepalive = request.keepalive
-            self._pingReq.timer     = task.LoopingCall(self.ping)
-            self._pingReq.timer.start(request.keepalive)
-        self.mqttConnectionMade()   # before the callbacks are executed ...
         if response.resultCode == 0:
+            MQTTBaseProtocol.state = self.CONNECTED
+            self.mqttConnectionMade()   # before the callbacks are executed ...
+            if request.keepalive != 0:
+                self._pingReq.keepalive = request.keepalive
+                self._pingReq.timer     = task.LoopingCall(self.ping)
+                self._pingReq.timer.start(request.keepalive)
             request.deferred.callback(response.session)
         else:
+            MQTTBaseProtocol.state = self.IDLE
             msg = MQTT_CONNECT_CODES[response.resultCode]
             request.deferred.errback(MQTTStateError(response.resultCode, msg))
         self.connReq = None     # to be garbage-collected
