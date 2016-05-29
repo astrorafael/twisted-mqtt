@@ -159,17 +159,17 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle PUBLISH control packet received.
         '''
         if  response.qos == 0:
-            log.debug("==> {packet:7} (id={response.msgId} qos={response.qos} dup={response.dup} retain={response.retain})" , packet="PUBLISH", response=response)
+            log.debug("==> {packet:7} (id={response.msgId} qos={response.qos} dup={response.dup} retain={response.retain} topic={response.topic})" , packet="PUBLISH", response=response)
             self._deliver(response)
         elif response.qos == 1:
-            log.debug("==> {packet:7} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain})" , packet="PUBLISH", response=response)
+            log.debug("==> {packet:7} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain} topic={response.topic})" , packet="PUBLISH", response=response)
             reply = PUBACK()
             reply.msgId = response.msgId
             log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="PUBACK", response=response)
             self.transport.write(reply.encode())
             self._deliver(response)
         elif response.qos == 2:
-            log.debug("==> {packet:7} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain})" , packet="PUBLISH", response=response)
+            log.debug("==> {packet:7} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain} topic={response.topic})" , packet="PUBLISH", response=response)
             self.factory.queuePublishRx.append(response)
             reply = PUBREC()
             reply.msgId = response.msgId
