@@ -59,5 +59,5 @@ setup(name             = 'twisted-mqtt',
       url              = 'http://github.com/astrorafael/twisted-mqtt/',
       classifiers      = classifiers,
       packages         = find_packages(exclude=['mqtt.test', 'mqtt.client.test']),
-      install_requires = ['twisted >= 15.4.0'],
+      install_requires = ['twisted >= 16.2.0'],
   )
