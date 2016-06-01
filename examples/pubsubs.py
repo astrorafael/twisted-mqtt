@@ -1,8 +1,8 @@
 import sys
 
 from twisted.internet import reactor, task
-from twisted.application.service import Service
-from twisted.internet.endpoints import TCP4ClientEndpoint
+from twisted.application.internet import ClientService
+from twisted.internet.endpoints   import clientFromString
 from twisted.logger   import (
     Logger, LogLevel, globalLogBeginner, textFileLogObserver, 
     FilteringLogObserver, LogLevelFilterPredicate)
@@ -47,7 +47,7 @@ def setLogLevel(namespace=None, levelStr='info'):
     logLevelFilterPredicate.setLogLevelForNamespace(namespace=namespace, level=level)
 
 
-class MyService(Service):
+class MyService(ClientService):
 
     def gotProtocol(self, p):
         self.protocol = p
@@ -60,8 +60,7 @@ class MyService(Service):
         self.protocol.setPublishHandler(self.onPublish)
 
     def onPublish(self, topic, payload, qos, dup, retain, msgId):
-       log.debug("topic = {topic}, msg={payload} qos = {qos}, dup ={dup} retain={retain}, msgId={id}", topic=topic, payload=payload, 
-            qos=qos, dup=dup, retain=retain, id=msgId)
+       log.debug("msg={payload}", payload=payload)
 
     def prepareToPublish(self, *args):
         self.task = task.LoopingCall(self.publish)
@@ -80,12 +79,12 @@ if __name__ == '__main__':
     import sys
     log = Logger()
     startLogging()
-    setLogLevel(namespace='mqtt', levelStr='debug')
+    setLogLevel(namespace='mqtt',     levelStr='debug')
     setLogLevel(namespace='__main__', levelStr='debug')
 
-    factory = MQTTFactory(profile=MQTTFactory.PUBLISHER | MQTTFactory.SUBSCRIBER)
-    point   = TCP4ClientEndpoint(reactor, "test.mosquitto.org", 1883)
-    serv    = MyService()
-
-    d = point.connect(factory).addCallback(serv.gotProtocol)
+    factory    = MQTTFactory(profile=MQTTFactory.PUBLISHER | MQTTFactory.SUBSCRIBER)
+    myEndpoint = clientFromString(reactor, "tcp:test.mosquitto.org:1883")
+    serv       = MyService(myEndpoint, factory)
+    serv.whenConnected().addCallback(serv.gotProtocol)
+    serv.startService()
     reactor.run()

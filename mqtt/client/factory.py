@@ -32,6 +32,9 @@ from collections import deque
 # Twisted  modules
 # ----------------
 
+# ReconnectingClientFactory is becoming obsolete
+# since applications now have ClientService and its retryPolicy parameter
+# See chapter "Getting Connected with Endpoints" in the Twisted manual
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.logger import Logger
 
@@ -46,8 +49,10 @@ log = Logger(namespace='mqtt')
 
 class MQTTFactory(ReconnectingClientFactory):
 
+
     SUBSCRIBER = 0x1
     PUBLISHER  = 0x2
+
 
     def __init__(self, profile):
         self.profile  = profile
@@ -60,8 +65,8 @@ class MQTTFactory(ReconnectingClientFactory):
         self.queuePublishRx   = deque() # PUBLISH messages (qos=2) waiting for PUBREL (subscriber side)
         log.info("MQTT Client library version {version}", version=__version__)
     
+
     def buildProtocol(self, addr):
-        
         if   self.profile == self.SUBSCRIBER:
             from mqtt.client.subscriber import MQTTProtocol
         elif self.profile == self.PUBLISHER:
@@ -70,7 +75,6 @@ class MQTTFactory(ReconnectingClientFactory):
             from mqtt.client.pubsubs import MQTTProtocol
         else:
             raise ProfileValueError("profile value not supported" , self.profile)
-        
         return MQTTProtocol(self)
 
 

@@ -1,8 +1,8 @@
 import sys
 
 from twisted.internet import reactor, task
-from twisted.application.service import Service
-from twisted.internet.endpoints import TCP4ClientEndpoint
+from twisted.application.internet import ClientService
+from twisted.internet.endpoints   import clientFromString
 from twisted.logger   import (
     Logger, LogLevel, globalLogBeginner, textFileLogObserver, 
     FilteringLogObserver, LogLevelFilterPredicate)
@@ -48,7 +48,7 @@ def setLogLevel(namespace=None, levelStr='info'):
     level = LogLevel.levelWithName(levelStr)
     logLevelFilterPredicate.setLogLevelForNamespace(namespace=namespace, level=level)
 
-class MyService(Service):
+class MyService(ClientService):
 
     def gotProtocol(self, p):
         self.protocol = p
@@ -73,14 +73,12 @@ if __name__ == '__main__':
     import sys
     log = Logger()
     startLogging()
-    setLogLevel(namespace='mqtt', levelStr='debug')
+    setLogLevel(namespace='mqtt',     levelStr='debug')
     setLogLevel(namespace='__main__', levelStr='debug')
 
-    factory = MQTTFactory(profile=MQTTFactory.PUBLISHER)
-    point   = TCP4ClientEndpoint(reactor, "test.mosquitto.org", 1883)
-    serv    = MyService()
-
-    d = point.connect(factory)
-    d.addCallback(serv.gotProtocol)
-
+    factory    = MQTTFactory(profile=MQTTFactory.PUBLISHER)
+    myEndpoint = clientFromString(reactor, "tcp:test.mosquitto.org:1883")
+    serv       = MyService(myEndpoint, factory)
+    serv.whenConnected().addCallback(serv.gotProtocol)
+    serv.startService()
     reactor.run()
