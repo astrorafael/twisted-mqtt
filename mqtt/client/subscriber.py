@@ -269,7 +269,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         request.deferred = defer.Deferred()
         request.deferred.msgId = request.msgId
         self._queueUnsubscribe.append(request)
-        self._retryUnsubscribe(request, False)
+        self._retryUnsubscribe(request, dup=False)
         return  request.deferred 
 
     # --------------
@@ -283,8 +283,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         if self._version == v31:
             request.encoded[0] |=  (dup << 3)   # set the dup flag
         interval = request.interval() + 0.25*len(self._queueSubscribe)
-        request.alarm = self.callLater(
-            interval, self._subscribeError, request)
+        request.alarm = self.callLater(interval, self._subscribeError, request)
         log.debug("==> {packet:7} (id={request.msgId:04x} dup={dup})", packet="SUBSCRIBE", request=request, dup=dup)
         self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
 
@@ -297,8 +296,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         if self._version == v31:
             request.encoded[0] |=  (dup << 3)   # set the dup flag
         interval = request.interval() + 0.25*len(self._queueUnsubscribe)
-        request.alarm = self.callLater(
-            interval, self._unsubscribeError, request)
+        request.alarm = self.callLater(interval, self._unsubscribeError, request)
         log.debug("==> {packet:7} (id={request.msgId:04x} dup={dup})", packet="UNSUBSCRIBE", request=request, dup=dup)
         self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
 
@@ -316,7 +314,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle lack of SUBACK
         '''
         log.error("{packet:7} (id={request.msgId:04x}) {timeout}, retransmitting", packet="SUBSCRIBE", request=request,  timeout="timeout")
-        self._retrySubscribe(request,  True)
+        self._retrySubscribe(request,  dup=True)
 
     # --------------------------------------------------------------------------
 
@@ -325,7 +323,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle ack of UNSUBACK packet
         '''
         log.error("{packet:7} (id={request.msgId:04x}) {timeout}, retransmitting", packet="UNSUBSCRIBE", request=request,  timeout="timeout")
-        self.reUnubscribe(request,  True)
+        self.reUnubscribe(request,  dup=True)
 
     # --------------------------------------------------------------------------
 

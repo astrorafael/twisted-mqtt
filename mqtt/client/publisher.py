@@ -261,7 +261,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         request.encoded[0] |=  (dup << 3)   # set the dup flag
         request.dup = dup
-        if request.interval:
+        if request.interval:    # Handle timeouts for QoS 1 and 2
             request.alarm = self.callLater(request.interval(), self._publishError, request)
         if request.msgId is None:
             log.debug("==> {packet:7} (id={request.msgId} qos={request.qos} dup={dup})", packet="PUBLISH", request=request, dup=dup)

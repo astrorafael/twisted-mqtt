@@ -660,7 +660,7 @@ class MQTTBaseProtocol(Protocol):
     # ------------------------------------------------------------------------
 
     def doPingRequest(self):
-
+        '''Performs the actual work of sending PINGREQ packets'''
         log.debug("==> {packet:7}", packet="PINGREQ")
         self.transport.write(self._pingReq.pdu)
         self._pingReq.alarm = self.callLater(
