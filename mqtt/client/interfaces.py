@@ -163,11 +163,14 @@ class IMQTTClientControl(Interface):
         acknowledge packets. 'n' can be limited to an internal maximun size
         (implementation defined).
 
+        To guarantee an in-order delivery of messages, only one ACK should be
+        pending (n=1).
+
         Signature
         =========
 
         @param n: window size
-        @raise ValueError: if not within [1..MQTTVaseProtocol.MAX_WINDOW]
+        @raise ValueError: if not within [1..MQTTBaseProtocol.MAX_WINDOW]
 
         '''
 

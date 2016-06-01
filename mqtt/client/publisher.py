@@ -247,7 +247,7 @@ class MQTTProtocol(MQTTBaseProtocol):
             return defer.fail(e)
         
         request.deferred.msgId = request.msgId
-        self._retryPublish(request, False)
+        self._retryPublish(request, dup=False)
         return  request.deferred 
 
     
@@ -262,8 +262,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         request.encoded[0] |=  (dup << 3)   # set the dup flag
         request.dup = dup
         if request.interval:
-            request.alarm = self.callLater(
-            request.interval(), self._publishError, request)
+            request.alarm = self.callLater(request.interval(), self._publishError, request)
         if request.msgId is None:
             log.debug("==> {packet:7} (id={request.msgId} qos={request.qos} dup={dup})", packet="PUBLISH", request=request, dup=dup)
         else:
@@ -279,8 +278,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         if self._version == v31:
             reply.encoded[0] |=  (dup << 3)   # set the dup flag
             reply.dup = dup
-        reply.alarm = self.callLater(
-            reply.interval(), self._pubrelError, reply)
+        reply.alarm = self.callLater(reply.interval(), self._pubrelError, reply)
         log.debug("==> {packet:7} (id={reply.msgId:04x} dup={dup})", packet="PUBREL", reply=reply, dup=dup)
         self.transport.write(str(reply.encoded) if PY2 else bytes(reply.encoded))
 
@@ -295,7 +293,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle the absence of PUBACK / PUBREC
         '''
         log.error("{packet:7} (id={request.msgId:04x} qos={request.qos}) {timeout}, _retryPublish", packet="PUBREC/PUBACK", request=request, timeout="timeout")
-        self._retryPublish(request, True)
+        self._retryPublish(request, dup=True)
 
     # --------------------------------------------------------------------------
 
@@ -304,7 +302,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle the absence of PUBCOMP
         '''
         log.error("{packet:7} (id={request.msgId:04x} qos={request.qos}) {timeout}, _retryPublish", packet="PUBCOMP", request=request, timeout="timeout")
-        self._retryRelease(reply, True)
+        self._retryRelease(reply, dup=True)
 
     # --------------------------------------------------------------------------
 
@@ -313,7 +311,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         Assert publish parameters
         '''
         if len(self.factory.queuePublishTx) + len(self.factory.queuePubRelease) == self._window:
-            raise MQTTWindowError("unsubscription requests exceeded limit", self._window)
+            raise MQTTWindowError("publish requests exceeded limit", self._window)
     
         if not ( 0<= request.qos < 3):
             raise QoSValueError("publish()",request.qos)
@@ -326,9 +324,9 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         log.debug("{event}", event="Sync Persistent Session")
         for reply in self.factory.queuePubRelease:
-            self._retryRelease(reply, True)
+            self._retryRelease(reply, dup=True)
         for request in self.factory.queuePublishTx:
-            self._retryPublish(request, True)
+            self._retryPublish(request, dup=True)
 
     # --------------------------------------------------------------------------
 

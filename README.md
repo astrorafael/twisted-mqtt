@@ -109,6 +109,7 @@ class MyService(ClientService):
         d.addCallbacks(self.prepareToPublish, self.printError)
         
     def prepareToPublish(self, *args):
+        self.protocol.setWindowSize(3)  # We are issuing 3 publish in a row
         self.task = task.LoopingCall(self.publish)
         self.task.start(5.0)
 

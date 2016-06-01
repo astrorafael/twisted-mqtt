@@ -297,7 +297,7 @@ class MQTTBaseProtocol(Protocol):
         self._version    = v311 # default protocol version
         self._buffer     = bytearray()
         self._keepalive  = 0    # keepalive (in ms) disabled by default
-        self._window     = self.MAX_WINDOW/4
+        self._window     = 1    # Guarantees in-order delivery by default
         self._cleanStart = True # No session by default
         self._pingReq       = PINGREQ() 
         self._pingReq.timer = None
