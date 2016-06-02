@@ -163,8 +163,9 @@ class IMQTTClientControl(Interface):
         acknowledge packets. 'n' can be limited to an internal maximun size
         (implementation defined).
 
-        To guarantee an in-order delivery of messages, only one ACK should be
-        pending (n=1).
+        To guarantee an in-order delivery of messages for messages with QoS > 0, 
+        only one ACK should be pending (n=1). 
+        By default, the ack window size is n=1 unless changed by this function.
 
         Signature
         =========
