@@ -12,7 +12,7 @@ the MQTT protocol (v3.1 & v3.1.1) in these flavours:
 
 * pure subscriber
 * pure publisher
-* or a mixing of both
+* or a mixing of both. This is useful to subscribe and publish through the same broker using only one TCP connection.
 
 Instalation
 -----------
@@ -331,14 +331,11 @@ Design Notes
 ------------
 
 There is a separate `MQTTProtocol` in each module implementing a different profile (subscriber, publiser, publisher/subscriber).
-The `MQTTBaseProtocol` and the various `MQTTProtocol` classes implement a State Pattern to avoid the "if spaghetti code" in the 
-connection states. A basic state machine is built into the `MQTTBaseProtocol` and the `ConnectedState` is patched according to
-the profile.
+The `MQTTBaseProtocol` and the various `MQTTProtocol` classes implement a State Pattern to avoid the "if spaghetti code" in the connection states. A basic state machine is built into the `MQTTBaseProtocol` and the `ConnectedState` is patched according to the profile.
 
-The publisher/subscriber is a mixin class implemented by delegation. The composite manage connection state and forwards all
-client requests and network events to the proper delegate. The trick is that the connection state must be shared
-between all protocol instances, using class variables. 
-Also, the transport is shared with the delegates so that they can write as if they were not in a container.
+Former implementation used two separate subclases, publisher and subscriber, with separate logic. The publisher/subscriber was a mixin class implemented by delegation that managed the connection state and forwarded all client requests and network events to the proper delegate. 
+
+However, this approach had some quirks and issues with sharing state. It has been re-written to a single publisher/subscriber class that manages everything. To maintain the former API, separate subclasses has been derived to implement a pure subscriber or publisher. The subclassing simply patches the state machine in order to only accept the proper methods for the given role (publisher or subscriber).
 
 Limitations
 -----------
@@ -347,9 +344,7 @@ The current implementation has the following limitations:
 
 * This library does not claim to be full comformant to the standard. 
 
-* There is a limited form of session persistance for the publisher. Pending acknowledges for PUBLISH
-  and PUBREL are kept in RAM and outlive the connection and the protocol object while Twisted is running. 
-  However, they are not stored in a persistent medium.
+* There is a limited form of session persistance for the publisher. Pending acknowledges for PUBLISH and PUBREL are kept in RAM and outlive the connection and the protocol object while Twisted is running. However, they are not stored in a persistent medium.
 
 For the time being, I consider this library to be in *Alpha* state.
 

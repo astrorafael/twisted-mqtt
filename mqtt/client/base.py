@@ -266,7 +266,7 @@ class MQTTBaseProtocol(Protocol):
     Handles all MQTT connection stuff
     '''
     
-    # So taht we can patch it in tests with Clock.callLater ...
+    # So that we can patch it in tests with Clock.callLater ...
     callLater = reactor.callLater
 
     packetTypes = {0x00: "null",    0x01: "CONNECT",     0x02: "CONNACK",
@@ -278,21 +278,11 @@ class MQTTBaseProtocol(Protocol):
 
     MAX_WINDOW = 16     # Max value of in-flight PUBLISH/SUBSCRIBE/UNSUBSCRIBE
 
-    # Shared state (needed in protocol composition)
-    # It should be a shared state per transport to handle
-    # different simultanous connections to several brokers
-    # but this is an unlikely scenario
-    IDLE       = None
-    CONNECTING = None
-    CONNECTED  = None
-    state      = None
-
-
     def __init__(self, factory):
-        MQTTBaseProtocol.IDLE        = IdleState(self)
-        MQTTBaseProtocol.CONNECTING  = ConnectingState(self)
-        MQTTBaseProtocol.CONNECTED   = ConnectedState(self)
-        MQTTBaseProtocol.state       = self.IDLE
+        self.IDLE        = IdleState(self)
+        self.CONNECTING  = ConnectingState(self)
+        self.CONNECTED   = ConnectedState(self)
+        self.state       = self.IDLE
         self.factory     = factory
         self._version    = v311 # default protocol version
         self._buffer     = bytearray()
@@ -474,7 +464,7 @@ class MQTTBaseProtocol(Protocol):
         if self._pingReq.alarm:
             self._pingReq.alarm.cancel()
             self._pingReq.alarm = None
-        MQTTBaseProtocol.state = self.IDLE
+        self.state = self.IDLE
         
 
     # ---------------------------------
@@ -583,7 +573,7 @@ class MQTTBaseProtocol(Protocol):
         request = self.connReq
         request.alarm.cancel()
         if response.resultCode == 0:
-            MQTTBaseProtocol.state = self.CONNECTED
+            self.state = self.CONNECTED
             self.mqttConnectionMade()   # before the callbacks are executed ...
             if request.keepalive != 0:
                 self._pingReq.keepalive = request.keepalive
@@ -591,7 +581,7 @@ class MQTTBaseProtocol(Protocol):
                 self._pingReq.timer.start(request.keepalive)
             request.deferred.callback(response.session)
         else:
-            MQTTBaseProtocol.state = self.IDLE
+            self.state = self.IDLE
             msg = MQTT_CONNECT_CODES[response.resultCode]
             request.deferred.errback(MQTTStateError(response.resultCode, msg))
         self.connReq = None     # to be garbage-collected
@@ -651,7 +641,7 @@ class MQTTBaseProtocol(Protocol):
         self._version    = request.version
         self.transport.write(pdu)
         # Changes state and returns deferred
-        MQTTBaseProtocol.state = self.CONNECTING
+        self.state = self.CONNECTING
         request.alarm = self.callLater(request.keepalive or 10, connectError)
         request.deferred = defer.Deferred()
         self.connReq = request  # keep track of this request until CONNACK or timeout

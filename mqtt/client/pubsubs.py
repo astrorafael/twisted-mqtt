@@ -25,26 +25,49 @@
 # Standard modules
 # ----------------
 
+from collections import deque
+
 # ----------------
 # Twisted  modules
 # ----------------
 
-from zope.interface import implementer
-from twisted.internet import defer, reactor
+from zope.interface   import implementer
+from twisted.internet import defer, reactor, error
 from twisted.logger   import Logger
 
 # -----------
 # Own modules
 # -----------
 
+from ..          import v31, PY2
+from ..error     import MQTTWindowError, QoSValueError, TopicTypeError
+from ..pdu       import SUBSCRIBE, UNSUBSCRIBE, PUBACK, PUBREC, PUBCOMP, PUBLISH, PUBREL
 from .interfaces import IMQTTSubscriber, IMQTTPublisher
-from .base       import MQTTBaseProtocol
-from .base       import IdleState, ConnectedState as BaseConnectedState
-from .subscriber import MQTTProtocol as MQTTSubscriberProtocol
-from .publisher  import MQTTProtocol as MQTTPublisherProtocol, ConnectingState
+from .interval   import Interval
+from .base       import MQTTBaseProtocol, IdleState, ConnectingState as BaseConnectingState, ConnectedState as BaseConnectedState
 
 
 log = Logger(namespace='mqtt')
+
+
+class MQTTSessionCleared(Exception):
+    '''MQTT persitent session cleared and message could not be published.'''
+    def __str__(self):
+        return self.__doc__
+
+
+# --------------------------------------------------
+# MQTT Client Connecting State Class (for publisher)
+# --------------------------------------------------
+
+class ConnectingState(BaseConnectingState):
+
+    def handleCONNACK(self, response):
+        self.protocol.handleCONNACK(response)
+
+    # The standard allows publishing data without waiting for CONNACK
+    def publish(self, request):
+        return self.protocol.doPublish(request)
 
 # ---------------------------------
 # MQTT Client Connected State Class
@@ -97,76 +120,187 @@ class MQTTProtocol(MQTTBaseProtocol):
     '''
 
     def __init__(self, factory):
-        # order is imporant to patch the states since the
-        # delegats patches teh state as well
-        self.subscriber = MQTTSubscriberProtocol(factory)
-        self.publisher  = MQTTPublisherProtocol(factory)
         MQTTBaseProtocol.__init__(self, factory) 
         # patches and reparent the state machine
-        MQTTBaseProtocol.CONNECTING = ConnectingState(self)
-        MQTTBaseProtocol.CONNECTED  = ConnectedState(self)
-        self._expectedDisc = None  # these two are ethe only extra state
-        self._nDisc        = None  
+        self.CONNECTING    = ConnectingState(self)
+        self.CONNECTED     = ConnectedState(self)
+        # additional, per-connection subscriber state
+        self._onPublish        = None
+        self._queueSubscribe   = deque()
+        self._queueUnsubscribe = deque() 
        
-    # ---------------------------------
-    # IMQTTClientControl Implementation
-    # ---------------------------------
-
-    def setDisconnectCallback(self, callback):
+    # -----------------------------
+    # IMQTTPublisher Implementation
+    # -----------------------------
+  
+    
+    def publish(self, topic, message, qos=0, retain=False):
         '''
-        API Entry Point
+        API entry point.
         '''
-        self._onDisconnect = callback
-        self.subscriber.setDisconnectCallback(self._trapDisconnect)
-        self.publisher.setDisconnectCallback(self._trapDisconnect)
+        request = PUBLISH()
+        request.qos     = qos
+        request.topic   = topic
+        request.payload = message
+        request.retain  = retain
+        request.dup     = False
+        return self.state.publish(request)
 
     # ---------------------------------
     # IMQTTSubscriber Implementation
     # ---------------------------------
-  
-    def subscribe(self, topic, qos=0):
-        '''
-        API entry point.
-        '''
-        return self.subscriber.subscribe(topic, qos)
 
-    def unsubscribe(self, topic):
+    def subscribe(self, topics, qos=0):
         '''
         API entry point.
         '''
-        return self.subscriber.unsubscribe(topic)
+        request = SUBSCRIBE()
+        request.topics = topics
+        request.qos    = qos
+        return self.state.subscribe(request)
+
+    # --------------------------------------------------------------------------
+
+    def unsubscribe(self, topics):
+        '''
+        API entry point.
+        '''
+        request = UNSUBSCRIBE()
+        request.topics = topics
+        return self.state.unsubscribe(request)
+
+    # --------------------------------------------------------------------------
 
     def setPublishHandler(self, callback):
         '''
         API entry point
         '''
-        self.subscriber.setPublishHandler(callback)
+        self._onPublish = callback
 
-    # -----------------------------
-    # IMQTTPublisher Implementation
-    # -----------------------------
+    # ------------------------------------------
+    # Southbound interface: Network entry points
+    # ------------------------------------------
 
-    def publish(self, topic, message, qos=0, retain=False):
+    # handleSUBACK(), handleUNSUBACK() handlePUBLISH() & handlePUBREL() for subscribers
+    def handleSUBACK(self, response):
         '''
-        API entry point.
+        Handle SUBACK control packet received.
         '''
-        return self.publisher.publish(topic, message, qos, retain)
+        log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="SUBACK",  response=response)
+        request = self._queueSubscribe.popleft()
+        request.alarm.cancel()
+        request.deferred.callback(response.granted)
+       
+    # --------------------------------------------------------------------------
+
+    def handleUNSUBACK(self, response):
+        '''
+        Handle UNSUBACK control packet received.
+        '''
+        log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="UNSUBACK",  response=response)
+        request = self._queueUnsubscribe.popleft()
+        request.alarm.cancel()
+        request.deferred.callback(response.msgId)
+
+    # --------------------------------------------------------------------------
+
+    def handlePUBLISH(self, response):
+        '''
+        Handle PUBLISH control packet received.
+        '''
+        if  response.qos == 0:
+            log.debug("==> {packet:7} (id={response.msgId} qos={response.qos} dup={response.dup} retain={response.retain} topic={response.topic})" , packet="PUBLISH", response=response)
+            self._deliver(response)
+        elif response.qos == 1:
+            log.debug("==> {packet:7} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain} topic={response.topic})" , packet="PUBLISH", response=response)
+            reply = PUBACK()
+            reply.msgId = response.msgId
+            log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="PUBACK", response=response)
+            self.transport.write(reply.encode())
+            self._deliver(response)
+        elif response.qos == 2:
+            log.debug("==> {packet:7} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain} topic={response.topic})" , packet="PUBLISH", response=response)
+            self.factory.queuePublishRx.append(response)
+            reply = PUBREC()
+            reply.msgId = response.msgId
+            log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="PUBREC", response=response)
+            self.transport.write(reply.encode())
+
+    # --------------------------------------------------------------------------
+
+    def handlePUBREL(self, response):
+        '''
+        Handle PUBREL control packet received.
+        '''
+        log.debug("==> {packet:7}(id={response.msgId:04x} dup={response.dup})" , packet="PUBREL", response=response)
+        msg = self.factory.queuePublishRx.popleft()
+        self._deliver(msg)
+        reply = PUBCOMP()
+        reply.msgId = response.msgId
+        reply.encode()
+        log.debug("<== {packet:7} (id={response.msgId:04})" , packet="PUBCOMP", response=response)
+        self.transport.write(reply.encode())
+
+    # --------------------------------------------------------------------------
+
+    # handlePUBACK(), handlePUBREC() & handlePUBCOMP() are for publisher
+
+    def handlePUBACK(self, response):
+        '''
+        Handle PUBACK control packet received (QoS=1).
+        '''
+        # By design PUBACK cannot arrive unordered, and we always pop the oldest one from the queue,
+        # so:  response.msgId == queuePublishTx[0].msgId
+        log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBACK", response=response)
+        request = self.factory.queuePublishTx.popleft()
+        request.alarm.cancel()
+        request.deferred.callback(request.msgId)
+
+    # --------------------------------------------------------------------------
+
+    def handlePUBREC(self, response):
+        '''
+        Handle PUBREC control packet received (QoS=2).
+        '''
+        # By design PUBREC cannot arrive unordered, and we always pop the oldest one from the queue,
+        # so:  response.msgId == queuePublishTx[0].msgId
+        log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBREC", response=response)
+        request = self.factory.queuePublishTx.popleft()
+        request.alarm.cancel()
+        reply = PUBREL()
+        reply.msgId = response.msgId
+        reply.interval = Interval()
+        reply.deferred = request.deferred       # Transfer the deferred to PUBREL
+        reply.encode()
+        self.factory.queuePubRelease.append(reply)
+        self._retryRelease(reply, False)
+
+
+    # --------------------------------------------------------------------------
+
+    def handlePUBCOMP(self, response):
+        '''
+        Handle PUBCOMP control packet received (QoS=2).
+        '''
+        # Same comment as PUBACK
+        log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBCOMP", response=response)
+        reply = self.factory.queuePubRelease.popleft() 
+        reply.alarm.cancel()
+        reply.deferred.callback(reply.msgId)
+
 
     # --------------------------
     # Twisted Protocol Interface
     # --------------------------
 
     def connectionLost(self, reason):
-        self._expectedDisc = 0
-        self._nDisc        = 0
-        flagPub  = (len(self.factory.queuePubRelease)    or len(self.factory.queuePublishTx)) != 0
-        flagSubs = (len(self.subscriber._queueSubscribe) or len(self.subscriber._queueUnsubscribe)) != 0
-        if not flagSubs:
-            self._expectedDisc += 1
-        if not(flagPub and self._cleanStart):
-            self._expectedDisc += 1
-        self.subscriber.connectionLost(reason)
-        self.publisher.connectionLost(reason)
+        MQTTBaseProtocol.connectionLost(self, reason)
+        disconnectAllowed1 = self._subs_connectionLost(reason)
+        disconnectAllowed2 = self._pub_connectionLost(reason)
+        if disconnectAllowed1 and disconnectAllowed2 and self._onDisconnect:
+            self._onDisconnect(reason)
+
+
 
     # ---------------------------
     # Protocol API for subclasses
@@ -174,64 +308,12 @@ class MQTTProtocol(MQTTBaseProtocol):
 
     def mqttConnectionMade(self):
         '''
-        Called when a CONNACK has been received.
-        Overriden in subscriber/publisher to do additional session sync
+        Called when a CONNACK has been received (publisher only).
         '''
-        # Important to share this with the publisher for disconnections
-        self.publisher._cleanStart = self._cleanStart
-         # I need to share the transport with my own delegates
-        self.subscriber.transport = self.transport
-        self.publisher.transport  = self.transport
-        # propagate this
-        self.subscriber.mqttConnectionMade()
-        self.publisher.mqttConnectionMade()
-
-
-    # -------------------------------
-    # Handle traffic form the network
-    # -------------------------------
-        
-    def handleSUBACK(self, response):
-        '''
-        Handle SUBACK control packet received.
-        '''
-        self.subscriber.handleSUBACK(response)
-
-    def handleUNSUBACK(self, response):
-        '''
-        Handle UNSUBACK control packet received.
-        '''
-        self.subscriber.handleUNSUBACK(response)
-
-    def handlePUBLISH(self, response):
-        '''
-        Handle PUBLISH control packet received.
-        '''
-        self.subscriber.handlePUBLISH(response)
-
-    def handlePUBACK(self, response):
-        '''
-        Handle PUBACK control packet received.
-        ''' 
-        self.publisher.handlePUBACK(response)
-
-    def handlePUBREC(self, response):
-        '''
-        Handle PUBREC control packet received.
-        ''' 
-        self.publisher.handlePUBREC(response)
-
-    def handlePUBREL(self, response):
-        '''
-        Handle PUBREL control packet received.
-        '''
-        self.subscriber.handlePUBREL(response)
-
-    def handlePUBCOMP(self, response):
-        '''
-        Handle PUBCOMP control packet received.
-        ''' 
-        self.publisher.handlePUBCOMP(response)
+        if self._cleanStart:
+            self._purgeSession()
+        else:
+            self._syncSession()
 
     # ---------------------------
     # State Machine API callbacks
@@ -239,30 +321,313 @@ class MQTTProtocol(MQTTBaseProtocol):
 
     def doSubscribe(self, request):
         '''
-        Send an UNSUBSCRIBE control packet.
+        Send a SUBSCRIBE control packet.
         '''
-        return self.subscriber.doSubscribe(request)
+        
+        if isinstance(request.topics, str):
+            request.topics = [(request.topics, request.qos)] 
+        elif isinstance(request.topics, tuple):
+            request.topics = [(request.topics[0], request.topics[1])] 
+        try:
+            self._checkSubscribe(request)
+            request.msgId = self.factory.makeId()
+            request.encode()
+        except Exception as e:
+            return defer.fail(e)
+        request.interval = Interval()
+        request.deferred = defer.Deferred()
+        request.deferred.msgId = request.msgId
+        self._queueSubscribe.append(request)
+        self._retrySubscribe(request, False)
+        return  request.deferred 
 
-    def doUnsubscribe(self, topic):
+    # --------------------------------------------------------------------------
+
+    def doUnsubscribe(self, request):
         '''
         Send an UNSUBSCRIBE control packet
-        ''' 
-        return self.subscriber.doUnsubscribe(request)
-    
+        '''
+        request.msgId = self.factory.makeId()
+        if isinstance(request.topics, str):
+            request.topics = [request.topics]
+        try:
+            self._checkUnsubscribe(request)
+            request.msgId = self.factory.makeId()
+            request.encode() 
+        except Exception as e:
+            return defer.fail(e)
+        request.interval = Interval()
+        request.deferred = defer.Deferred()
+        request.deferred.msgId = request.msgId
+        self._queueUnsubscribe.append(request)
+        self._retryUnsubscribe(request, dup=False)
+        return  request.deferred
+
+    # --------------------------------------------------------------------------
+
     def doPublish(self, request):
         '''
         Send PUBLISH control packet
         '''
-        return self.publisher.doPublish(request)
 
-    # --------------
-    # Helper methods
-    # --------------
+        try:
+            self._checkPublish(request)
+        except Exception as e:
+            return defer.fail(e)
 
-    def _trapDisconnect(self, reason):
-        self._nDisc += 1
-        if self._nDisc == self._expectedDisc and self._onDisconnect:
-            self._onDisconnect(reason)
+        if request.qos == 0:
+            request.msgId    = None
+            request.deferred = defer.succeed(None)
+            request.interval = None
+        else:
+            request.msgId    = self.factory.makeId()
+            request.deferred = defer.Deferred()
+            request.interval = Interval()
+            self.factory.queuePublishTx.append(request)
+            
+        try:
+            request.encode()
+        except Exception as e:
+            return defer.fail(e)
+        
+        request.deferred.msgId = request.msgId
+        self._retryPublish(request, dup=False)
+        return  request.deferred 
 
+
+    # --------------------------
+    # Helper methods (subscriber)
+    # ---------------------------
+
+    def _retrySubscribe(self, request, dup):
+        '''
+        Transmit/Retransmit SUBSCRIBE packet
+        '''
+        if self._version == v31:
+            request.encoded[0] |=  (dup << 3)   # set the dup flag
+        interval = request.interval() + 0.25*len(self._queueSubscribe)
+        request.alarm = self.callLater(interval, self._subscribeError, request)
+        log.debug("==> {packet:7} (id={request.msgId:04x} dup={dup})", packet="SUBSCRIBE", request=request, dup=dup)
+        self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
+
+    # --------------------------------------------------------------------------
+
+    def _retryUnsubscribe(self, request, dup):
+        '''
+        Transmit/Retransmit UNSUBSCRIBE packet
+        '''
+        if self._version == v31:
+            request.encoded[0] |=  (dup << 3)   # set the dup flag
+        interval = request.interval() + 0.25*len(self._queueUnsubscribe)
+        request.alarm = self.callLater(interval, self._unsubscribeError, request)
+        log.debug("==> {packet:7} (id={request.msgId:04x} dup={dup})", packet="UNSUBSCRIBE", request=request, dup=dup)
+        self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
+
+    # --------------------------------------------------------------------------
+
+    def _deliver(self, pdu):
+        '''Deliver the message to the client if registered a callback'''
+        if self._onPublish:
+            self._onPublish(pdu.topic, pdu.payload, pdu.qos, pdu.dup, pdu.retain, pdu.msgId)
+
+    # --------------------------------------------------------------------------
+
+    def _subscribeError(self, request):
+        '''
+        Handle lack of SUBACK
+        '''
+        log.error("{packet:7} (id={request.msgId:04x}) {timeout}, retransmitting", packet="SUBSCRIBE", request=request,  timeout="timeout")
+        self._retrySubscribe(request,  dup=True)
+
+    # --------------------------------------------------------------------------
+
+    def _unsubscribeError(self, request):
+        '''
+        Handle ack of UNSUBACK packet
+        '''
+        log.error("{packet:7} (id={request.msgId:04x}) {timeout}, retransmitting", packet="UNSUBSCRIBE", request=request,  timeout="timeout")
+        self.reUnubscribe(request,  dup=True)
+
+    # --------------------------------------------------------------------------
+
+    def _checkSubscribe(self, request):
+        '''
+        Assert subscribe parameters
+        '''
+        if len(self._queueSubscribe) == self._window:
+            raise MQTTWindowError("subscription requests exceeded limit", self._window)
+        if not isinstance(request.topics, list):
+            raise TopicTypeError(type(topic))
+        for (topic, qos) in request.topics:
+            if not ( 0<= qos < 3):
+                raise QoSValueError("subscribe", qos)
+
+    # --------------------------------------------------------------------------
+
+    def _checkUnsubscribe(self, request):
+        '''
+        Assert unsubscribe parameters
+        '''
+        if len(self._queueUnsubscribe) == self._window:
+            raise MQTTWindowError("unsubscription requests exceeded limit", self._window)
+        if not isinstance(request.topics, list):
+            raise TopicTypeError(type(topic))
+
+    # --------------------------
+    # Helper methods (publisher)
+    # --------------------------
+
+    def _retryPublish(self, request, dup):
+        '''
+        Transmit/Retransmit PUBLISH packet 
+        '''
+        request.encoded[0] |=  (dup << 3)   # set the dup flag
+        request.dup = dup
+        if request.interval:    # Handle timeouts for QoS 1 and 2
+            request.alarm = self.callLater(request.interval(), self._publishError, request)
+        if request.msgId is None:
+            log.debug("==> {packet:7} (id={request.msgId} qos={request.qos} dup={dup})", packet="PUBLISH", request=request, dup=dup)
+        else:
+            log.debug("==> {packet:7} (id={request.msgId:04x} qos={request.qos} dup={dup})", packet="PUBLISH", request=request, dup=dup)
+        self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
+
+    # --------------------------------------------------------------------------
+
+    def _retryRelease(self, reply, dup):
+        '''
+        Transmit/Retransmit PUBREL packet 
+        '''
+        if self._version == v31:
+            reply.encoded[0] |=  (dup << 3)   # set the dup flag
+            reply.dup = dup
+        reply.alarm = self.callLater(reply.interval(), self._pubrelError, reply)
+        log.debug("==> {packet:7} (id={reply.msgId:04x} dup={dup})", packet="PUBREL", reply=reply, dup=dup)
+        self.transport.write(str(reply.encoded) if PY2 else bytes(reply.encoded))
+
+    # --------------------------------------------------------------------------
+
+
+    # According to QoS = 1 we should never give up _retryPublish as long as 
+    # we are connected to a server. So there is no retry count.
+
+    def _publishError(self, request):
+        '''
+        Handle the absence of PUBACK / PUBREC 
+        '''
+        log.error("{packet:7} (id={request.msgId:04x} qos={request.qos}) {timeout}, _retryPublish", packet="PUBREC/PUBACK", request=request, timeout="timeout")
+        self._retryPublish(request, dup=True)
+
+    # --------------------------------------------------------------------------
+
+    def _pubrelError(self, reply):
+        '''
+        Handle the absence of PUBCOMP 
+        '''
+        log.error("{packet:7} (id={request.msgId:04x} qos={request.qos}) {timeout}, _retryPublish", packet="PUBCOMP", request=request, timeout="timeout")
+        self._retryRelease(reply, dup=True)
+
+    # --------------------------------------------------------------------------
+
+    def _checkPublish(self, request):
+        '''
+        Assert publish parameters
+        '''
+        if len(self.factory.queuePublishTx) + len(self.factory.queuePubRelease) == self._window:
+            raise MQTTWindowError("publish requests exceeded limit", self._window)
+    
+        if not ( 0<= request.qos < 3):
+            raise QoSValueError("publish()",request.qos)
+    
+    # --------------------------------------------------------------------------
+
+    def _syncSession(self):
+        '''
+        Tries to restore the session state upon a new MQTT connection made (publisher)
+        '''
+        log.debug("{event}", event="Sync Persistent Session")
+        for reply in self.factory.queuePubRelease:
+            self._retryRelease(reply, dup=True)
+        for request in self.factory.queuePublishTx:
+            self._retryPublish(request, dup=True)
+
+    # --------------------------------------------------------------------------
+
+    def _purgeSession(self):
+        '''
+        Purges the persistent state in the client 
+        '''
+        log.debug("{event}", event="Clean Persistent Session")
+        while len(self.factory.queuePublishTx):
+            request = self.factory.queuePublishTx.popleft()
+            request.deferred.errback(MQTTSessionCleared)
+        while len(self.factory.queuePubRelease):
+            request = self.factory.queuePubRelease.popleft()
+            request.deferred.errback(MQTTSessionCleared)
+
+    # -------------------------------------
+    # Helper methods (publisher/subscriber)
+    # -------------------------------------
+
+    def _subs_connectionLost(self, reason):
+        '''
+        Subscriber connection lost handling.
+        Returns True if we can invoke the disconnect callback
+        '''
+       
+        # Find out pending deferreds
+        if len(self._queueSubscribe) or len(self._queueUnsubscribe):
+            pendingDeferred = True
+        else:
+            pendingDeferred = False
+        # Cancel Alarms first
+        for request in self._queueSubscribe:
+            if request.alarm is not None:
+                request.alarm.cancel()
+                request.alarm = None
+        for request in self._queueUnsubscribe:
+            if request.alarm is not None:
+                request.alarm.cancel()
+                request.alarm = None
+        # Then, invoke errbacks anyway, 
+        # since we do not persist SUBCRIBE/UNSUBSCRIBE ack state
+        while len(self._queueSubscribe):
+            request = self._queueSubscribe.popleft()
+            request.deferred.errback(reason)
+        while len(self._queueUnsubscribe):
+            request = self._queueUnsubscribe.popleft()
+            request.deferred.errback(reason)
+        return not pendingDeferred
+       
+
+
+    def _pub_connectionLost(self, reason):
+        '''
+        Publisher connection lost handling. 
+        Returns True if we can invoke the disconnect callback
+        '''
+         # Find out pending deferreds
+        if len(self.factory.queuePubRelease) or len(self.factory.queuePublishTx):
+            pendingDeferred = True
+        else:
+            pendingDeferred = False
+        # Cancel Alarms first
+        for request in self.factory.queuePublishTx:
+            if request.alarm is not None:
+                request.alarm.cancel()
+                request.alarm = None
+        for request in self.factory.queuePubRelease:
+            if request.alarm is not None:
+                request.alarm.cancel()
+                request.alarm = None
+        # Then, invoke errbacks if we do not persist state
+        if self._cleanStart:
+            while len(self.factory.queuePubRelease):
+                request = self.factory.queuePubRelease.popleft()
+                request.deferred.errback(reason)
+            while len(self.factory.queuePublishTx):
+                request = self.factory.queuePublishTx.popleft()
+                request.deferred.errback(reason)
+
+        return not (pendingDeferred and self._cleanStart)
 
 __all__ = [MQTTProtocol]

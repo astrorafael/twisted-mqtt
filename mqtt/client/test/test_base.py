@@ -58,16 +58,16 @@ class TestMQTTBaseProtocol1(unittest.TestCase):
         self.CONNACK.encode()
         d = self.protocol.connect("TwistedMQTT-pub", keepalive=0, version=v31)
         self.transport.clear()
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.CONNECTING)
+        self.assertEqual(self.protocol.state, self.protocol.CONNECTING)
         self.protocol.dataReceived(self.CONNACK.encoded)
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.CONNECTED)
+        self.assertEqual(self.protocol.state, self.protocol.CONNECTED)
         self.assertEqual(self.CONNACK.session, self.successResultOf(d))
  
 
     def test_connect_timeout(self):
         d = self.protocol.connect("TwistedMQTT-pub", keepalive=0, version=v31)
         self.transport.clear()
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.CONNECTING)
+        self.assertEqual(self.protocol.state, self.protocol.CONNECTING)
         self.assertNoResult(d)
         self.clock.advance(11)
         self.failureResultOf(d).trap(MQTTTimeoutError)
@@ -110,7 +110,7 @@ class TestMQTTBaseProtocol2(unittest.TestCase):
 
     def test_disconnect(self):
         self._connect()
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.CONNECTED)
+        self.assertEqual(self.protocol.state, self.protocol.CONNECTED)
         self.protocol.disconnect()
         self.transport.clear()
 
@@ -118,14 +118,14 @@ class TestMQTTBaseProtocol2(unittest.TestCase):
         self._connect(keepalive=5)
         self.protocol.dataReceived(PINGRES().encode())
         self.transport.clear()
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.CONNECTED)
+        self.assertEqual(self.protocol.state, self.protocol.CONNECTED)
       
     def test_ping_timeout(self):
         self._connect(keepalive=5)
         self.protocol.ping()
         self.transport.clear()
         self.clock.advance(6)
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+        self.assertEqual(self.protocol.state, self.protocol.IDLE)
         
 class TestMQTTBaseExceptions(unittest.TestCase):
 
@@ -143,61 +143,61 @@ class TestMQTTBaseExceptions(unittest.TestCase):
         clientId="1234567890ABCDEFGHIJ1234567890"
         d = self.protocol.connect(clientId, keepalive=0, version=0)
         self.failureResultOf(d).trap(ValueError)
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+        self.assertEqual(self.protocol.state, self.protocol.IDLE)
 
     def test_connect_client_id_v31(self):
         clientId="1234567890ABCDEFGHIJ1234567890"
         d = self.protocol.connect(clientId, keepalive=0, version=v31)
         self.failureResultOf(d).trap(ValueError)
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+        self.assertEqual(self.protocol.state, self.protocol.IDLE)
 
     def test_connect_client_id_v311(self):
         clientId="1234567890ABCDEFGHIJ1234567890"*3000
         d = self.protocol.connect(clientId, keepalive=0, version=v311)
         self.failureResultOf(d).trap(ValueError)
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+        self.assertEqual(self.protocol.state, self.protocol.IDLE)
 
     def test_connect_keepalive_negative(self):
         clientId="1234567890A"
         d = self.protocol.connect(clientId, keepalive=-1, version=v31)
         self.failureResultOf(d).trap(ValueError)
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+        self.assertEqual(self.protocol.state, self.protocol.IDLE)
 
     def test_connect_keepalive_large(self):
         clientId="1234567890A"
         d = self.protocol.connect(clientId, keepalive=65537, version=v31)
         self.failureResultOf(d).trap(ValueError)
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+        self.assertEqual(self.protocol.state, self.protocol.IDLE)
 
     def test_connect_will_qos_large(self):
         clientId="1234567890A"
         d = self.protocol.connect(clientId, keepalive=0, version=v31, willQoS=5)
         self.failureResultOf(d).trap(ValueError)
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+        self.assertEqual(self.protocol.state, self.protocol.IDLE)
 
     def test_connect_will_qos_negative(self):
         clientId="1234567890A"
         d = self.protocol.connect(clientId, keepalive=0, version=v31, willQoS=-1)
         self.failureResultOf(d).trap(ValueError)
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+        self.assertEqual(self.protocol.state, self.protocol.IDLE)
 
     def test_connect_no_username_with_password(self):
         clientId="1234567890A"
         d = self.protocol.connect(clientId, keepalive=0, version=v31, password="foo")
         self.failureResultOf(d).trap(ValueError)
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+        self.assertEqual(self.protocol.state, self.protocol.IDLE)
     
     def test_connect_will_topic_no_message(self):
         clientId="1234567890A"
         d = self.protocol.connect(clientId, keepalive=0, version=v31, willTopic="foo/bar")
         self.failureResultOf(d).trap(ValueError)
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+        self.assertEqual(self.protocol.state, self.protocol.IDLE)
 
     def test_connect_will_message_no_topic(self):
         clientId="1234567890A"
         d = self.protocol.connect(clientId, keepalive=0, version=v31, willMessage="Hello")
         self.failureResultOf(d).trap(ValueError)
-        self.assertEqual(self.protocol.state, MQTTBaseProtocol.IDLE)
+        self.assertEqual(self.protocol.state, self.protocol.IDLE)
     
     def test_window_size_large(self):
         self.assertRaises(ValueError, self.protocol.setWindowSize, 32)

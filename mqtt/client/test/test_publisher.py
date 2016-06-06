@@ -79,6 +79,7 @@ class TestMQTTPublisher1(unittest.TestCase):
 
 
     def _publish(self, n, qos, topic, msg):
+        self.protocol.setWindowSize(n)
         dl = []
         for i in range(0,n):
             dl.append(self.protocol.publish(topic=topic, qos=qos, message=msg))

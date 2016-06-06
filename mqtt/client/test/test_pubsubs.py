@@ -86,7 +86,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         self.protocol.setDisconnectCallback(self._disconnected)
         self.transport.loseConnection()
         self.assertEqual(self.disconnected, 1)
-        self.assertEqual(self.protocol._expectedDisc, 2)
+        
 
     def test_disconnect_2(self):
         '''connect and disconnect'''
@@ -94,7 +94,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         self.protocol.setDisconnectCallback(self._disconnected)
         self.protocol.disconnect()
         self.assertEqual(self.disconnected, 1)
-        self.assertEqual(self.protocol._expectedDisc, 2)
+        
 
     def test_disconnect_3(self):
         '''connect, generate a deferred and lose the transport'''
@@ -103,9 +103,9 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
         self.transport.clear()
         self.transport.loseConnection()
-        self.assertEqual(self.disconnected, 1)
+        self.assertEqual(self.disconnected, 0)
         self.failureResultOf(d).trap(error.ConnectionDone)
-        self.assertEqual(self.protocol._expectedDisc, 1)
+       
 
     def test_disconnect_4(self):
         '''connect, generate a deferred and disconnect'''
@@ -114,9 +114,9 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
         self.transport.clear()
         self.protocol.disconnect()
-        self.assertEqual(self.disconnected, 1)
+        self.assertEqual(self.disconnected, 0)
         self.failureResultOf(d).trap(error.ConnectionDone)
-        self.assertEqual(self.protocol._expectedDisc, 1)
+       
 
     def test_disconnect_5(self):
         '''connect with persistent session, generate a deferred and disconnect'''
@@ -127,7 +127,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         self.protocol.disconnect()
         self.assertEqual(self.disconnected, 1)
         self.assertNoResult(d)
-        self.assertEqual(self.protocol._expectedDisc, 2)
+       
 
     def test_disconnect_6(self):
         '''connect with persistent session, generate a deferred , rebuilds protocol'''
@@ -138,7 +138,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         self._rebuild()
         self.assertEqual(self.disconnected, 1)
         self.assertNoResult(d)
-        self.assertEqual(self.protocol._expectedDisc, None)
+       
 
 
 class TestMQTTSubscriberDisconnect(unittest.TestCase):
@@ -189,7 +189,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         self.protocol.setDisconnectCallback(self._disconnected)
         self.transport.loseConnection()
         self.assertEqual(self.disconnected, 1)
-        self.assertEqual(self.protocol._expectedDisc, 2)
+       
 
     def test_disconnect_2(self):
         '''connect and disconnect'''
@@ -197,7 +197,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         self.protocol.setDisconnectCallback(self._disconnected)
         self.protocol.disconnect()
         self.assertEqual(self.disconnected, 1)
-        self.assertEqual(self.protocol._expectedDisc, 2)
+       
 
     def test_disconnect_3(self):
         '''connect, generate a deferred and lose the transport'''
@@ -206,8 +206,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.transport.loseConnection()
-        self.assertEqual(self.disconnected, 1)
-        self.assertEqual(self.protocol._expectedDisc, 1)
+        self.assertEqual(self.disconnected, 0)
         self.failureResultOf(d).trap(error.ConnectionDone)
 
     def test_disconnect_4(self):
@@ -217,8 +216,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.protocol.disconnect()
-        self.assertEqual(self.disconnected, 1)
-        self.assertEqual(self.protocol._expectedDisc, 1)
+        self.assertEqual(self.disconnected, 0)
         self.failureResultOf(d).trap(error.ConnectionDone)
 
     def test_disconnect_5(self):
@@ -229,8 +227,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.protocol.disconnect()
-        self.assertEqual(self.disconnected, 1)
-        self.assertEqual(self.protocol._expectedDisc, 1)
+        self.assertEqual(self.disconnected, 0)
         self.failureResultOf(d).trap(error.ConnectionDone)
 
     def test_disconnect_6(self):
@@ -241,7 +238,6 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self._serverDown()
         self._rebuild()
-        self.assertEqual(self.disconnected, 1)
-        self.assertEqual(self.protocol._expectedDisc, None)
+        self.assertEqual(self.disconnected, 0)
         self.failureResultOf(d).trap(error.ConnectionDone)
 

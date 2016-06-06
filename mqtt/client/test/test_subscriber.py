@@ -78,6 +78,7 @@ class TestMQTTSubscriber1(unittest.TestCase):
 
 
     def _subscribe(self, n, qos, topic):
+        self.protocol.setWindowSize(n)
         dl = []
         for i in range(0,n):
             t = "{0}{1}".format(topic, i)
@@ -88,6 +89,7 @@ class TestMQTTSubscriber1(unittest.TestCase):
         return dl
 
     def _unsubscribe(self, n, topic):
+        self.protocol.setWindowSize(n)
         dl = []
         for i in range(0,n):
             t = "{0}{1}".format(topic, i)
@@ -180,7 +182,6 @@ class TestMQTTSubscriber1(unittest.TestCase):
             self.failureResultOf(d).trap(error.ConnectionDone)
 
     def test_unsubscribe_several_window_fail(self):
-        self.protocol.setWindowSize(3)
         dl = self._unsubscribe(n=3, topic="foo/bar/baz")
         self.assertEqual(len(self.protocol._queueUnsubscribe), 3)
         d4 = self.protocol.unsubscribe("foo/bar/baz4")
