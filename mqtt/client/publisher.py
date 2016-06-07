@@ -37,7 +37,7 @@ from twisted.logger   import Logger
 # -----------
 
 from .interfaces import IMQTTPublisher
-from .base       import ConnectingState as BaseConnectingState, ConnectedState as BaseConnectedState
+from .base       import IdleState, ConnectingState as BaseConnectingState, ConnectedState as BaseConnectedState
 from .pubsubs    import MQTTProtocol    as PubSubsMQTTProtocol
 
 log = Logger(namespace='mqtt')
@@ -87,6 +87,7 @@ class MQTTProtocol(PubSubsMQTTProtocol):
     def __init__(self, factory):
         PubSubsMQTTProtocol.__init__(self, factory)
         # patches the state machine
+        self.IDLE       = IdleState(self)
         self.CONNECTING = ConnectingState(self) 
         self.CONNECTED  = ConnectedState(self)   
 

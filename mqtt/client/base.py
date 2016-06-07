@@ -123,6 +123,11 @@ class BaseState(object):
         return defer.fail(MQTTStateError("Unexpected unsubscribe() operation,", state))
 
 
+    def setPublishHandler(self, callback):
+        state = self.__class__.__name__
+        raise MQTTStateError("Unexpected setPublishHandler() operation,", state)
+
+
     def publish(self, request):
         state = self.__class__.__name__
         return defer.fail(MQTTStateError("Unexpected publish() operation", state))

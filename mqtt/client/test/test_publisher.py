@@ -30,7 +30,7 @@ from twisted.python   import log
 from mqtt                   import v31
 from mqtt.error             import MQTTWindowError
 from mqtt.pdu               import CONNACK, PUBACK, PUBREC, PUBREL, PUBCOMP
-from mqtt.client.base       import MQTTBaseProtocol
+from mqtt.client.base       import MQTTBaseProtocol, MQTTStateError
 from mqtt.client.factory    import MQTTFactory
 from mqtt.client.subscriber import MQTTProtocol as MQTTSubscriberProtocol
 from mqtt.client.publisher  import MQTTProtocol as MQTTPublisherProtocol
@@ -372,3 +372,57 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         self._rebuild()
         self.assertEqual(self.disconnected, True)
         self.assertNoResult(d)
+
+
+class TestMQTTPublisherForbiddenOps(unittest.TestCase):
+    '''
+    Testing various cases of disconnect callback
+    '''
+
+    def setUp(self):
+        '''
+        Set up a connencted state
+        '''
+        self.transport = proto_helpers.StringTransportWithDisconnection()
+        self.clock     = task.Clock()
+        MQTTBaseProtocol.callLater = self.clock.callLater
+        self.factory   = MQTTFactory(MQTTFactory.PUBLISHER)
+        self._rebuild()
+        self.disconnected = False
+        self._rebuild()
+        self._connect()
+
+    def _connect(self, cleanStart=True):
+        '''
+        Go to connected state
+        '''
+        ack = CONNACK()
+        ack.session = False
+        ack.resultCode = 0
+        ack.encode()
+        self.protocol.connect("TwistedMQTT-pub", keepalive=0, cleanStart=cleanStart, version=v31)
+        self.transport.clear()
+        self.protocol.dataReceived(ack.encoded)
+
+
+    def _rebuild(self):
+        self.protocol  = self.factory.buildProtocol(0)
+        self.transport.protocol = self.protocol
+        MQTTBaseProtocol.callLater = self.clock.callLater
+        self.protocol.makeConnection(self.transport)
+
+    def test_forbidden_subscribe(self):
+        '''Just connect and lose the transport'''
+        d = self.protocol.subscribe("foo/bar/baz1", 2 )
+        self.failureResultOf(d).trap(MQTTStateError)
+      
+    def test_forbidden_unsubscribe(self):
+        '''Just connect and lose the transport'''
+        d = self.protocol.unsubscribe("foo/bar/baz1")
+        self.failureResultOf(d).trap(MQTTStateError)
+
+    def test_forbidden_publish_callback(self):
+        '''Just connect and lose the transport'''
+        def onPublish(topic, payload, qos, dup, retain, msgId):
+            pass
+        self.assertRaises(MQTTStateError, self.protocol.setPublishHandler, onPublish)

@@ -44,7 +44,7 @@ from ..error     import MQTTWindowError, QoSValueError, TopicTypeError
 from ..pdu       import SUBSCRIBE, UNSUBSCRIBE, PUBACK, PUBREC, PUBCOMP, PUBLISH, PUBREL
 from .interfaces import IMQTTSubscriber, IMQTTPublisher
 from .interval   import Interval
-from .base       import MQTTBaseProtocol, IdleState, ConnectingState as BaseConnectingState, ConnectedState as BaseConnectedState
+from .base       import MQTTBaseProtocol, IdleState as BaseIdleState, ConnectingState as BaseConnectingState, ConnectedState as BaseConnectedState
 
 
 log = Logger(namespace='mqtt')
@@ -54,6 +54,15 @@ class MQTTSessionCleared(Exception):
     '''MQTT persitent session cleared and message could not be published.'''
     def __str__(self):
         return self.__doc__
+
+# ---------------------------------------------
+# MQTT Client Idle State Class (for subscriber)
+# ---------------------------------------------
+
+class IdleState(BaseIdleState):
+
+    def setPublishHandler(self, callback):
+        self.protocol.doSetPublishHandler(callback)
 
 
 # --------------------------------------------------
@@ -69,6 +78,9 @@ class ConnectingState(BaseConnectingState):
     def publish(self, request):
         return self.protocol.doPublish(request)
 
+    def setPublishHandler(self, callback):
+        self.protocol.doSetPublishHandler(callback)
+
 # ---------------------------------
 # MQTT Client Connected State Class
 # ---------------------------------
@@ -83,6 +95,9 @@ class ConnectedState(BaseConnectedState):
 
     def unsubscribe(self, request):
         return self.protocol.doUnsubscribe(request)
+
+    def setPublishHandler(self, callback):
+        self.protocol.doSetPublishHandler(callback)
     
     def handleSUBACK(self, response):
         self.protocol.handleSUBACK(response)
@@ -122,6 +137,7 @@ class MQTTProtocol(MQTTBaseProtocol):
     def __init__(self, factory):
         MQTTBaseProtocol.__init__(self, factory) 
         # patches and reparent the state machine
+        self.IDLE          = IdleState(self)
         self.CONNECTING    = ConnectingState(self)
         self.CONNECTED     = ConnectedState(self)
         # additional, per-connection subscriber state
@@ -173,9 +189,10 @@ class MQTTProtocol(MQTTBaseProtocol):
 
     def setPublishHandler(self, callback):
         '''
-        API entry point
+        API entry 
         '''
-        self._onPublish = callback
+        self.state.setPublishHandler(callback)
+
 
     # ------------------------------------------
     # Southbound interface: Network entry points
@@ -362,6 +379,14 @@ class MQTTProtocol(MQTTBaseProtocol):
         self._queueUnsubscribe.append(request)
         self._retryUnsubscribe(request, dup=False)
         return  request.deferred
+
+    # --------------------------------------------------------------------------
+
+    def doSetPublishHandler(self, callback):
+        '''
+        Stores the publish callback
+        '''
+        self._onPublish = callback
 
     # --------------------------------------------------------------------------
 
