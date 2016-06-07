@@ -333,9 +333,11 @@ Design Notes
 There is a separate `MQTTProtocol` in each module implementing a different profile (subscriber, publiser, publisher/subscriber).
 The `MQTTBaseProtocol` and the various `MQTTProtocol` classes implement a State Pattern to avoid the "if spaghetti code" in the connection states. A basic state machine is built into the `MQTTBaseProtocol` and the `ConnectedState` is patched according to the profile.
 
-Former implementation used two separate subclases, publisher and subscriber, with separate logic. The publisher/subscriber was a mixin class implemented by delegation that managed the connection state and forwarded all client requests and network events to the proper delegate. 
+Previous 0.1.x implementations used two separate (subclases, publisher) and  with separate logic for both roles. The publisher/subscriber was a mixin class implemented by delegation that managed the connection state and forwarded all client requests and network events to the proper delegate. 
 
-However, this approach had some quirks and issues with sharing state. It has been re-written to a single publisher/subscriber class that manages everything. To maintain the former API, separate subclasses has been derived to implement a pure subscriber or publisher. The subclassing simply patches the state machine in order to only accept the proper methods for the given role (publisher or subscriber).
+However, this approach had some quirks and issues with sharing state. It has been re-written to a single publisher/subscriber class that manages everything. 
+
+To maintain the former API, separate subclasses has been derived to implement a pure subscriber or publisher roles. The subclassing simply patches the state machine in order to honor only the methods for a given role.
 
 Limitations
 -----------
