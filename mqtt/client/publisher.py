@@ -89,7 +89,8 @@ class MQTTProtocol(PubSubsMQTTProtocol):
         # patches the state machine
         self.IDLE       = IdleState(self)
         self.CONNECTING = ConnectingState(self) 
-        self.CONNECTED  = ConnectedState(self)   
+        self.CONNECTED  = ConnectedState(self)
+        self.state      = self.IDLE
 
 
 __all__ = [MQTTProtocol]

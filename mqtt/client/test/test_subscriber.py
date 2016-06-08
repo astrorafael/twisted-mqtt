@@ -368,3 +368,91 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         self.assertEqual(self.disconnected, False)
         self.failureResultOf(d).trap(error.ConnectionDone)
 
+
+
+
+class TestMQTTSubscriber2(unittest.TestCase):
+
+
+    def setUp(self):
+        '''
+        Set up a conencted state
+        '''
+        self.transport = proto_helpers.StringTransportWithDisconnection()
+        self.clock     = task.Clock()
+        MQTTBaseProtocol.callLater = self.clock.callLater
+        self.factory   = MQTTFactory(MQTTFactory.SUBSCRIBER)
+        self._rebuild()
+       
+    def _connect(self, cleanStart=True):
+        '''
+        Go to connected state
+        '''
+        ack = CONNACK()
+        ack.session = False
+        ack.resultCode = 0
+        ack.encode()
+        self.protocol.connect("TwistedMQTT-sub", keepalive=0, cleanStart=cleanStart, version=v31)
+        self.transport.clear()
+        self.protocol.dataReceived(ack.encoded)
+
+
+    def _serverDown(self):
+        self.transport.loseConnection()
+        self.transport.clear()
+        del self.protocol
+
+    def _rebuild(self):
+        self.protocol  = self.factory.buildProtocol(0)
+        self.transport.protocol = self.protocol
+        MQTTBaseProtocol.callLater = self.clock.callLater
+        self.protocol.makeConnection(self.transport)
+
+
+    def _subscribe(self, n, qos, topic):
+        self.protocol.setWindowSize(n)
+        dl = []
+        for i in range(0,n):
+            t = "{0}{1}".format(topic, i)
+            dl.append(self.protocol.subscribe(t, qos))
+        self.transport.clear()
+        for d in dl:
+            self.assertNoResult(d)
+        return dl
+
+    def _unsubscribe(self, n, topic):
+        self.protocol.setWindowSize(n)
+        dl = []
+        for i in range(0,n):
+            t = "{0}{1}".format(topic, i)
+            dl.append(self.protocol.unsubscribe(t))
+        self.transport.clear()
+        for d in dl:
+            self.assertNoResult(d)
+        return dl
+
+    def test_subscribe_setPubishHandler1(self):
+        def onPublish(topic, payload, qos, dup, retain, msgId):
+            self.called  = True
+        self.protocol.setPublishHandler(onPublish)
+        self._connect()
+        d = self.protocol.subscribe("foo/bar/baz1", 2 )
+        self.transport.clear()
+        ack = SUBACK()
+        ack.msgId = d.msgId
+        ack.granted = [(2, False)]
+        self.protocol.dataReceived(ack.encode())
+        self.assertEqual([(2, False)], self.successResultOf(d))
+
+    def test_subscribe_setPubishHandler2(self):
+        def onPublish(topic, payload, qos, dup, retain, msgId):
+            self.called  = True
+        self._connect()
+        self.protocol.setPublishHandler(onPublish)
+        d = self.protocol.subscribe("foo/bar/baz1", 2 )
+        self.transport.clear()
+        ack = SUBACK()
+        ack.msgId = d.msgId
+        ack.granted = [(2, False)]
+        self.protocol.dataReceived(ack.encode())
+        self.assertEqual([(2, False)], self.successResultOf(d))

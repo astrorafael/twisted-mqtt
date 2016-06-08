@@ -86,7 +86,7 @@ class MQTTProtocol(PubSubsMQTTProtocol):
     def __init__(self, factory):
         PubSubsMQTTProtocol.__init__(self, factory)
         # patches the state machine
-        self.CONNECTED = ConnectedState(self) 
+        self.CONNECTED = ConnectedState(self)
         
 
 __all__ = [MQTTProtocol]

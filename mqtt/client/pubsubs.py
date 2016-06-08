@@ -140,10 +140,11 @@ class MQTTProtocol(MQTTBaseProtocol):
         self.IDLE          = IdleState(self)
         self.CONNECTING    = ConnectingState(self)
         self.CONNECTED     = ConnectedState(self)
+        self.state         = self.IDLE
         # additional, per-connection subscriber state
         self._onPublish        = None
         self._queueSubscribe   = deque()
-        self._queueUnsubscribe = deque() 
+        self._queueUnsubscribe = deque()
        
     # -----------------------------
     # IMQTTPublisher Implementation
