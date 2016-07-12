@@ -139,74 +139,74 @@ class TestMQTTPublisher1(unittest.TestCase):
     def test_publish_single_qos0(self):
         self._connect()
         d = self.protocol.publish(topic="foo/bar/baz1", qos=0, message="hello world 0")
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  0)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  0)
         self.assertEqual(None, self.successResultOf(d))
 
     def test_publish_single_qos1(self):
         self._connect()
         d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  1)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  1)
         self.transport.clear()
         ack = PUBACK()
         ack.msgId = d.msgId
         self.protocol.dataReceived(ack.encode())
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  0)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  0)
         self.assertEqual(ack.msgId, self.successResultOf(d))
 
     def test_publish_single_qos2(self):
         self._connect()
         d = self.protocol.publish(topic="foo/bar/baz1", qos=2, message="hello world 2")
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  1)
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 0)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  1)
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 0)
         self.transport.clear()
         ack = PUBREC()
         ack.msgId = d.msgId
         self.protocol.dataReceived(ack.encode())
         self.transport.clear()
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  0)
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 1)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  0)
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 1)
         ack = PUBCOMP()
         ack.msgId = d.msgId
         self.protocol.dataReceived(ack.encode())
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  0)
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 0)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  0)
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 0)
         self.assertEqual(ack.msgId, self.successResultOf(d))
 
     def test_publish_several_qos0(self):
         self._connect()
         dl = self._publish(n=3, qos=0, topic="foo/bar/baz", msg="Hello World")
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  0)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  0)
         
 
     def test_publish_several_qos1(self):
         self._connect()
         dl = self._publish(n=3, qos=1, topic="foo/bar/baz", msg="Hello World")
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  len(dl))
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  len(dl))
         self._puback(dl)
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  0)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  0)
         
 
     def test_publish_several_qos2(self):
         self._connect()
         dl = self._publish(n=3, qos=2, topic="foo/bar/baz", msg="Hello World")
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  len(dl))
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 0)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  len(dl))
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 0)
         self._pubrec(dl)
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  0)
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), len(dl))
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  0)
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), len(dl))
         self._pubcomp(dl)
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  0)
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 0)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  0)
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 0)
 
 
     def test_lost_session(self):
         self._connect()
         dl = self._publish(n=3, qos=2, topic="foo/bar/baz", msg="Hello World")
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  len(dl))
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 0)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  len(dl))
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 0)
         self._serverDown()
-        self.assertEqual(len(self.factory.queuePublishTx),  0)
-        self.assertEqual(len(self.factory.queuePubRelease), 0)
+        self.assertEqual(len(self.factory.queuePublishTx[0]),  0)
+        self.assertEqual(len(self.factory.queuePubRelease[0]), 0)
         for d in dl:
             self.failureResultOf(d).trap(error.ConnectionDone)
        
@@ -214,36 +214,36 @@ class TestMQTTPublisher1(unittest.TestCase):
     def test_persistent_session_qos1(self):
         self._connect(cleanStart=False)
         dl = self._publish(n=3, qos=1, topic="foo/bar/baz", msg="Hello World")
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  len(dl))
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  len(dl))
         self._serverDown()
-        self.assertEqual(len(self.factory.queuePublishTx),  len(dl))
+        self.assertEqual(len(self.factory.queuePublishTx[0]),  len(dl))
         for d in dl:
             self.assertNoResult(d)
         self._rebuild()
         self._connect(cleanStart=False)
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  len(dl))
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  len(dl))
         self._puback(dl)
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  0)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  0)
 
 
     def test_persistent_session_qos2(self):
         self._connect(cleanStart=False)
         dl = self._publish(n=3, qos=2, topic="foo/bar/baz", msg="Hello World")
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  len(dl))
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 0)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  len(dl))
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 0)
         self._serverDown()
         for d in dl:
             self.assertNoResult(d)
         self._rebuild()
         self._connect(cleanStart=False)
-        self.assertEqual(len(self.factory.queuePublishTx),  len(dl))
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 0)
+        self.assertEqual(len(self.factory.queuePublishTx[0]),  len(dl))
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 0)
         self._pubrec(dl)
-        self.assertEqual(len(self.factory.queuePublishTx), 0 )
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), len(dl))
+        self.assertEqual(len(self.factory.queuePublishTx[0]), 0 )
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), len(dl))
         self._pubcomp(dl)
-        self.assertEqual(len(self.factory.queuePublishTx),  0)
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 0)
+        self.assertEqual(len(self.factory.queuePublishTx[0]),  0)
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 0)
 
 
 
@@ -259,22 +259,22 @@ class TestMQTTPublisher1(unittest.TestCase):
         self.assertNoResult(dl[1])
         self.assertNoResult(dl[2])
         self._rebuild()
-        self.assertEqual(len(self.protocol.factory.queuePublishTx),  1)
-        self.assertEqual(len(self.protocol.factory.queuePubRelease),  2)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]),  1)
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]),  2)
         # Reconnect with the new client protcol object
         self._connect(cleanStart=False)
         self._pubrec(dl[-1:])   # send the last one
-        self.assertEqual(len(self.protocol.factory.queuePublishTx), 0)
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 3)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[0]), 0)
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 3)
         self._pubcomp(dl[0:1])   # send the first comp
-        self.assertEqual(len(self.factory.queuePublishTx),  0)
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 2)
+        self.assertEqual(len(self.factory.queuePublishTx[0]),  0)
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 2)
         self._pubcomp(dl[1:2])   # send the second comp
-        self.assertEqual(len(self.factory.queuePublishTx),  0)
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 1)
+        self.assertEqual(len(self.factory.queuePublishTx[0]),  0)
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 1)
         self._pubcomp(dl[-1:])   # send the last comp
-        self.assertEqual(len(self.factory.queuePublishTx),  0)
-        self.assertEqual(len(self.protocol.factory.queuePubRelease), 0)
+        self.assertEqual(len(self.factory.queuePublishTx[0]),  0)
+        self.assertEqual(len(self.protocol.factory.queuePubRelease[0]), 0)
 
 
 class TestMQTTPublisherDisconnect(unittest.TestCase):
