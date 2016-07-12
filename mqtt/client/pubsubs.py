@@ -238,7 +238,7 @@ class MQTTProtocol(MQTTBaseProtocol):
             self._deliver(response)
         elif response.qos == 2:
             log.debug("==> {packet:7} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain} topic={response.topic})" , packet="PUBLISH", response=response)
-            self.factory.queuePublishRx[self.factory.addr].append(response)
+            self.factory.windowPubRx[self.factory.addr].append(response)
             reply = PUBREC()
             reply.msgId = response.msgId
             log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="PUBREC", response=response)
@@ -251,7 +251,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle PUBREL control packet received.
         '''
         log.debug("==> {packet:7}(id={response.msgId:04x} dup={response.dup})" , packet="PUBREL", response=response)
-        msg = self.factory.queuePublishRx[self.factory.addr].popleft()
+        msg = self.factory.windowPubRx[self.factory.addr].popleft()
         self._deliver(msg)
         reply = PUBCOMP()
         reply.msgId = response.msgId
@@ -267,12 +267,13 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle PUBACK control packet received (QoS=1).
         '''
-        # By design PUBACK cannot arrive unordered, and we always pop the oldest one from the queue,
-        # so:  response.msgId == queuePublishTx[self.factory.addr][0].msgId
+        # so:  response.msgId == windowPublish[self.factory.addr][0].msgId
         log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBACK", response=response)
-        request = self.factory.queuePublishTx[self.factory.addr].popleft()
+        request = self.factory.windowPublish[self.factory.addr][response.msgId]
         request.alarm.cancel()
         request.deferred.callback(request.msgId)
+        del self.factory.windowPublish[self.factory.addr][response.msgId]
+        self._copyPublish(dup=False)
 
     # --------------------------------------------------------------------------
 
@@ -280,17 +281,17 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle PUBREC control packet received (QoS=2).
         '''
-        # By design PUBREC cannot arrive unordered, and we always pop the oldest one from the queue,
-        # so:  response.msgId == queuePublishTx[self.factory.addr][0].msgId
+        # so:  response.msgId == windowPublish[self.factory.addr][0].msgId
         log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBREC", response=response)
-        request = self.factory.queuePublishTx[self.factory.addr].popleft()
+        request = self.factory.windowPublish[self.factory.addr][response.msgId]
         request.alarm.cancel()
+        del self.factory.windowPublish[self.factory.addr][response.msgId]
         reply = PUBREL()
         reply.msgId = response.msgId
         reply.interval = Interval()
         reply.deferred = request.deferred       # Transfer the deferred to PUBREL
         reply.encode()
-        self.factory.queuePubRelease[self.factory.addr].append(reply)
+        self.factory.windowPubRelease[self.factory.addr][reply.msgId] = reply
         self._retryRelease(reply, False)
 
 
@@ -302,9 +303,11 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         # Same comment as PUBACK
         log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBCOMP", response=response)
-        reply = self.factory.queuePubRelease[self.factory.addr].popleft() 
+        reply = self.factory.windowPubRelease[self.factory.addr][response.msgId]
         reply.alarm.cancel()
         reply.deferred.callback(reply.msgId)
+        del self.factory.windowPubRelease[self.factory.addr][reply.msgId]
+        self._copyPublish(dup=False)
 
 
     # --------------------------
@@ -409,15 +412,15 @@ class MQTTProtocol(MQTTBaseProtocol):
             request.msgId    = self.factory.makeId()
             request.deferred = defer.Deferred()
             request.interval = Interval()
-            self.factory.queuePublishTx[self.factory.addr].append(request)
-            
+        
         try:
             request.encode()
         except Exception as e:
             return defer.fail(e)
-        
+
+        self.factory.queuePublishTx[self.factory.addr].append(request)
         request.deferred.msgId = request.msgId
-        self._retryPublish(request, dup=False)
+        self._copyPublish(dup=False)
         return  request.deferred 
 
 
@@ -503,9 +506,23 @@ class MQTTProtocol(MQTTBaseProtocol):
     # Helper methods (publisher)
     # --------------------------
 
+    def _copyPublish(self, dup):
+        '''
+        Transmit/Retransmit several PUBLISH packets 
+        '''
+        cnx = self.factory.addr
+        N = min(self._window - len(self.factory.windowPublish[cnx]), len(self.factory.queuePublishTx[cnx]))
+        log.debug("Copying {N} requests to Tx window",N=N)
+        for i in range(0,N):
+            request = self.factory.queuePublishTx[cnx].popleft()
+            if request.msgId:   # only form QoS 1 & 2
+                self.factory.windowPublish[cnx][request.msgId] = request
+            self._retryPublish(request, dup)
+
+
     def _retryPublish(self, request, dup):
         '''
-        Transmit/Retransmit PUBLISH packet 
+        Transmit/Retransmit one PUBLISH packet 
         '''
         request.encoded[0] |=  (dup << 3)   # set the dup flag
         request.dup = dup
@@ -558,8 +575,9 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Assert publish parameters
         '''
-        if len(self.factory.queuePublishTx[self.factory.addr]) + len(self.factory.queuePubRelease[self.factory.addr]) == self._window:
-            raise MQTTWindowError("publish requests exceeded limit", self._window)
+        # Now that we have a buffer, not anymore
+        #if len(self.factory.windowPublish[self.factory.addr]) + len(self.factory.windowPubRelease[self.factory.addr]) == self._window:
+        #    raise MQTTWindowError("publish requests exceeded limit", self._window)
     
         if not ( 0<= request.qos < 3):
             raise QoSValueError("publish()",request.qos)
@@ -571,9 +589,9 @@ class MQTTProtocol(MQTTBaseProtocol):
         Tries to restore the session state upon a new MQTT connection made (publisher)
         '''
         log.debug("{event}", event="Sync Persistent Session")
-        for reply in self.factory.queuePubRelease[self.factory.addr]:
+        for reply in self.factory.windowPubRelease[self.factory.addr]:
             self._retryRelease(reply, dup=True)
-        for request in self.factory.queuePublishTx[self.factory.addr]:
+        for request in self.factory.windowPublish[self.factory.addr]:
             self._retryPublish(request, dup=True)
 
     # --------------------------------------------------------------------------
@@ -583,11 +601,11 @@ class MQTTProtocol(MQTTBaseProtocol):
         Purges the persistent state in the client 
         '''
         log.debug("{event}", event="Clean Persistent Session")
-        while len(self.factory.queuePublishTx[self.factory.addr]):
-            request = self.factory.queuePublishTx[self.factory.addr].popleft()
+        while len(self.factory.windowPublish[self.factory.addr]):
+            request = self.factory.windowPublish[self.factory.addr].popleft()
             request.deferred.errback(MQTTSessionCleared)
-        while len(self.factory.queuePubRelease[self.factory.addr]):
-            request = self.factory.queuePubRelease[self.factory.addr].popleft()
+        while len(self.factory.windowPubRelease[self.factory.addr]):
+            request = self.factory.windowPubRelease[self.factory.addr].popleft()
             request.deferred.errback(MQTTSessionCleared)
 
     # -------------------------------------
@@ -632,26 +650,26 @@ class MQTTProtocol(MQTTBaseProtocol):
         Returns True if we can invoke the disconnect callback
         '''
          # Find out pending deferreds
-        if len(self.factory.queuePubRelease[self.factory.addr]) or len(self.factory.queuePublishTx[self.factory.addr]):
+        if len(self.factory.windowPubRelease[self.factory.addr]) or len(self.factory.windowPublish[self.factory.addr]):
             pendingDeferred = True
         else:
             pendingDeferred = False
         # Cancel Alarms first
-        for request in self.factory.queuePublishTx[self.factory.addr]:
+        for request in self.factory.windowPublish[self.factory.addr]:
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
-        for request in self.factory.queuePubRelease[self.factory.addr]:
+        for request in self.factory.windowPubRelease[self.factory.addr]:
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
         # Then, invoke errbacks if we do not persist state
         if self._cleanStart:
-            while len(self.factory.queuePubRelease[self.factory.addr]):
-                request = self.factory.queuePubRelease[self.factory.addr].popleft()
+            while len(self.factory.windowPubRelease[self.factory.addr]):
+                request = self.factory.windowPubRelease[self.factory.addr].popleft()
                 request.deferred.errback(reason)
-            while len(self.factory.queuePublishTx[self.factory.addr]):
-                request = self.factory.queuePublishTx[self.factory.addr].popleft()
+            while len(self.factory.windowPublish[self.factory.addr]):
+                request = self.factory.windowPublish[self.factory.addr].popleft()
                 request.deferred.errback(reason)
 
         return not (pendingDeferred and self._cleanStart)
