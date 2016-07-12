@@ -60,13 +60,15 @@ class MQTTFactory(ReconnectingClientFactory):
         self.maxDelay = 2*3600
         # Packet Id generator
         self.id       = 0
-        self.queuePublishTx   = deque() # PUBLISH messages Waiting for PUBREC/PUBACK
-        self.queuePubRelease  = deque() # PUBREL  messages (qos=2) waiting for PUBCOMP (publisher)
-        self.queuePublishRx   = deque() # PUBLISH messages (qos=2) waiting for PUBREL (subscriber side)
+        self.queuePublishTx   = {} # PUBLISH messages Waiting for PUBREC/PUBACK
+        self.queuePubRelease  = {} # PUBREL  messages (qos=2) waiting for PUBCOMP (publisher)
+        self.queuePublishRx   = {} # PUBLISH messages (qos=2) waiting for PUBREL (subscriber side)
         log.info("MQTT Client library version {version}", version=__version__)
     
 
     def buildProtocol(self, addr):
+        log.debug("MQTT Client Factory buildProtocol({addr})", addr=addr)
+        self.addr = addr
         if   self.profile == self.SUBSCRIBER:
             from mqtt.client.subscriber import MQTTProtocol
         elif self.profile == self.PUBLISHER:
@@ -75,6 +77,10 @@ class MQTTFactory(ReconnectingClientFactory):
             from mqtt.client.pubsubs import MQTTProtocol
         else:
             raise ProfileValueError("profile value not supported" , self.profile)
+        
+        self.queuePublishTx[addr]   = deque() 
+        self.queuePubRelease[addr]  = deque() 
+        self.queuePublishRx[addr]   = deque() 
         return MQTTProtocol(self)
 
 
