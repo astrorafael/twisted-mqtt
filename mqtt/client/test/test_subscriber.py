@@ -25,6 +25,8 @@ from twisted.trial    import unittest
 from twisted.test     import proto_helpers
 from twisted.internet import task, defer, error
 
+from twisted.internet.address import IPv4Address
+
 
 from mqtt                   import v31
 from mqtt.error             import MQTTWindowError
@@ -49,6 +51,7 @@ class TestMQTTSubscriber1(unittest.TestCase):
         self.clock     = task.Clock()
         MQTTBaseProtocol.callLater = self.clock.callLater
         self.factory   = MQTTFactory(MQTTFactory.SUBSCRIBER)
+        self.addr = IPv4Address('TCP','localhost',1880)
         self._rebuild()
         self._connect()
 
@@ -71,7 +74,7 @@ class TestMQTTSubscriber1(unittest.TestCase):
         del self.protocol
 
     def _rebuild(self):
-        self.protocol  = self.factory.buildProtocol(0)
+        self.protocol  = self.factory.buildProtocol(self.addr)
         self.transport.protocol = self.protocol
         MQTTBaseProtocol.callLater = self.clock.callLater
         self.protocol.makeConnection(self.transport)
