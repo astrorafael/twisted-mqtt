@@ -139,7 +139,7 @@ class TestMQTTSubscriber1(unittest.TestCase):
 
     def test_subscribe_several_fail(self):
         dl = self._subscribe(n=3, qos=2, topic="foo/bar/baz")
-        self.assertEqual(len(self.protocol._queueSubscribe), 3)
+        self.assertEqual(len(self.protocol._windowSubscribe), 3)
         self._serverDown()
         for d in dl:
             self.failureResultOf(d).trap(error.ConnectionDone)
@@ -148,9 +148,9 @@ class TestMQTTSubscriber1(unittest.TestCase):
     def test_subscribe_several_window_fail(self):
         self.protocol.setWindowSize(3)
         dl = self._subscribe(n=3, qos=2, topic="foo/bar/baz")
-        self.assertEqual(len(self.protocol._queueSubscribe), 3)
+        self.assertEqual(len(self.protocol._windowSubscribe), 3)
         d4 = self.protocol.subscribe("foo/bar/baz3", 2 )
-        self.assertEqual(len(self.protocol._queueSubscribe), 3)
+        self.assertEqual(len(self.protocol._windowSubscribe), 3)
         self.failureResultOf(d4).trap(MQTTWindowError)
         self._serverDown()
         for d in dl:
