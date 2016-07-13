@@ -87,7 +87,7 @@ class MQTTFactory(ReconnectingClientFactory):
         v = self.windowPubRelease.get(addr, dict() )
         log.debug("Current Publish Release (Publisher) Window size = {N}", N=len(v))
         self.windowPubRelease[addr] = v
-        v = self.windowPubRx.get(addr, deque())
+        v = self.windowPubRx.get(addr, dict())
         log.debug("Current Publish Release (Subscriber) Window size = {N}", N=len(v))
         self.windowPubRx[addr] = v
         return MQTTProtocol(self)

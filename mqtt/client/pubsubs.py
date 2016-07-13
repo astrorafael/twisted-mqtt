@@ -238,7 +238,7 @@ class MQTTProtocol(MQTTBaseProtocol):
             self._deliver(response)
         elif response.qos == 2:
             log.debug("==> {packet:7} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain} topic={response.topic})" , packet="PUBLISH", response=response)
-            self.factory.windowPubRx[self.factory.addr].append(response)
+            self.factory.windowPubRx[self.factory.addr][response.msgId] = response
             reply = PUBREC()
             reply.msgId = response.msgId
             log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="PUBREC", response=response)
@@ -251,7 +251,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle PUBREL control packet received.
         '''
         log.debug("==> {packet:7}(id={response.msgId:04x} dup={response.dup})" , packet="PUBREL", response=response)
-        msg = self.factory.windowPubRx[self.factory.addr].popleft()
+        msg = self.factory.windowPubRx[self.factory.addr][response.msgId]
+        del self.factory.windowPubRx[self.factory.addr][response.msgId]
         self._deliver(msg)
         reply = PUBCOMP()
         reply.msgId = response.msgId
