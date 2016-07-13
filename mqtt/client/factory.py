@@ -64,6 +64,9 @@ class MQTTFactory(ReconnectingClientFactory):
         self.windowPublish     = {} # PUBLISH messages window waiting for PUBREC/PUBACK
         self.windowPubRelease  = {} # PUBREL  messages (qos=2) window waiting for PUBCOMP (publisher)
         self.windowPubRx       = {} # PUBLISH messages (qos=2) window waiting for PUBREL (subscriber side)
+        self.windowSubscribe   = {} # SUBSCRIBE messages window, waiting fr SUBACK
+        self.windowUnSubscribe = {} # UNSUBSCRIBE messages window, waiting fr UNSUBACK
+
         log.info("MQTT Client library version {version}", version=__version__)
     
 
@@ -90,6 +93,12 @@ class MQTTFactory(ReconnectingClientFactory):
         v = self.windowPubRx.get(addr, dict())
         log.debug("Current Publish Release (Subscriber) Window size = {N}", N=len(v))
         self.windowPubRx[addr] = v
+        v = self.windowSubscribe.get(addr, dict() )
+        log.debug("Current Subscribe (Subscriber) Window size = {N}", N=len(v))
+        self.windowSubscribe[addr] = v
+        v = self.windowUnSubscribe.get(addr, dict())
+        log.debug("Current Unsubscribe (Subscriber) Window size = {N}", N=len(v))
+        self.windowUnSubscribe[addr] = v
         return MQTTProtocol(self)
 
 
