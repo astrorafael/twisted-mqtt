@@ -142,9 +142,9 @@ class MQTTProtocol(MQTTBaseProtocol):
         self.CONNECTED     = ConnectedState(self)
         self.state         = self.IDLE
         # additional, per-connection subscriber state
-        self._onPublish        = None
-        self._windowSubscribe  = dict()
-        self._queueUnsubscribe = deque()
+        self._onPublish         = None
+        self._windowSubscribe   = dict()
+        self._windowUnsubscribe = dict()
        
     # -----------------------------
     # IMQTTPublisher Implementation
@@ -217,7 +217,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle UNSUBACK control packet received.
         '''
         log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="UNSUBACK",  response=response)
-        request = self._queueUnsubscribe.popleft()
+        request = self._windowUnsubscribe[response.msgId]
+        del self._windowUnsubscribe[response.msgId]
         request.alarm.cancel()
         request.deferred.callback(response.msgId)
 
@@ -382,7 +383,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         request.interval = Interval()
         request.deferred = defer.Deferred()
         request.deferred.msgId = request.msgId
-        self._queueUnsubscribe.append(request)
+        self._windowUnsubscribe[request.msgId] = request
         self._retryUnsubscribe(request, dup=False)
         return  request.deferred
 
@@ -449,7 +450,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         if self._version == v31:
             request.encoded[0] |=  (dup << 3)   # set the dup flag
-        interval = request.interval() + 0.25*len(self._queueUnsubscribe)
+        interval = request.interval() + 0.25*len(self._windowUnsubscribe)
         request.alarm = self.callLater(interval, self._unsubscribeError, request)
         log.debug("==> {packet:7} (id={request.msgId:04x} dup={dup})", packet="UNSUBSCRIBE", request=request, dup=dup)
         self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
@@ -499,7 +500,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Assert unsubscribe parameters
         '''
-        if len(self._queueUnsubscribe) == self._window:
+        if len(self._windowUnsubscribe) == self._window:
             raise MQTTWindowError("unsubscription requests exceeded limit", self._window)
         if not isinstance(request.topics, list):
             raise TopicTypeError(type(topic))
@@ -621,7 +622,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
        
         # Find out pending deferreds
-        if len(self._windowSubscribe) or len(self._queueUnsubscribe):
+        if len(self._windowSubscribe) or len(self._windowUnsubscribe):
             pendingDeferred = True
         else:
             pendingDeferred = False
@@ -630,7 +631,7 @@ class MQTTProtocol(MQTTBaseProtocol):
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
-        for request in self._queueUnsubscribe:
+        for _, request in self._windowUnsubscribe.items():
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
@@ -640,8 +641,9 @@ class MQTTProtocol(MQTTBaseProtocol):
             request = self._windowSubscribe[k]
             del self._windowSubscribe[k]
             request.deferred.errback(reason)
-        while len(self._queueUnsubscribe):
-            request = self._queueUnsubscribe.popleft()
+        for k in self._windowUnsubscribe.keys():
+            request = self._windowUnsubscribe[k]
+            del self._windowUnsubscribe[k]
             request.deferred.errback(reason)
         return not pendingDeferred
        

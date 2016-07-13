@@ -176,16 +176,16 @@ class TestMQTTSubscriber1(unittest.TestCase):
 
     def test_unsubscribe_several_fail(self):
         dl = self._unsubscribe(n=3, topic="foo/bar/baz")
-        self.assertEqual(len(self.protocol._queueUnsubscribe), 3)
+        self.assertEqual(len(self.protocol._windowUnsubscribe), 3)
         self._serverDown()
         for d in dl:
             self.failureResultOf(d).trap(error.ConnectionDone)
 
     def test_unsubscribe_several_window_fail(self):
         dl = self._unsubscribe(n=3, topic="foo/bar/baz")
-        self.assertEqual(len(self.protocol._queueUnsubscribe), 3)
+        self.assertEqual(len(self.protocol._windowUnsubscribe), 3)
         d4 = self.protocol.unsubscribe("foo/bar/baz4")
-        self.assertEqual(len(self.protocol._queueUnsubscribe), 3)
+        self.assertEqual(len(self.protocol._windowUnsubscribe), 3)
         self.failureResultOf(d4).trap(MQTTWindowError)
         self._serverDown()
         for d in dl:
