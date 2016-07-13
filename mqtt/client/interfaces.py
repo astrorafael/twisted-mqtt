@@ -265,6 +265,12 @@ class IMQTTPublisher(Interface):
     pure publisher MQTT client.
     '''
 
+    def setBandwith(bandwith):
+        '''
+        Set the estimate available bandwith to produce timeouts proportional to the payload size.
+        This is useful to avoid timeouts and retransmissions in very large payloads using QoS=1 and 2. 
+        '''
+        
     def publish(topic, message, qos=0, retain=False):
         '''
 

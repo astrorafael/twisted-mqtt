@@ -43,7 +43,7 @@ from ..          import v31, PY2
 from ..error     import MQTTWindowError, QoSValueError, TopicTypeError
 from ..pdu       import SUBSCRIBE, UNSUBSCRIBE, PUBACK, PUBREC, PUBCOMP, PUBLISH, PUBREL
 from .interfaces import IMQTTSubscriber, IMQTTPublisher
-from .interval   import Interval
+from .interval   import Interval, IntervalLinear
 from .base       import MQTTBaseProtocol, IdleState as BaseIdleState, ConnectingState as BaseConnectingState, ConnectedState as BaseConnectedState
 
 
@@ -134,6 +134,8 @@ class MQTTProtocol(MQTTBaseProtocol):
     MQTTClient publish/subscribe Protocol
     '''
 
+    DEFAULT_BANDWITH = 10000
+
     def __init__(self, factory):
         MQTTBaseProtocol.__init__(self, factory) 
         # patches and reparent the state machine
@@ -141,14 +143,22 @@ class MQTTProtocol(MQTTBaseProtocol):
         self.CONNECTING    = ConnectingState(self)
         self.CONNECTED     = ConnectedState(self)
         self.state         = self.IDLE
+        # Estimated bandwith in bytes/sec for PUBLISH PDUs
+        self._bandwith     =  self.DEFAULT_BANDWITH
         # additional, per-connection subscriber state
-        self._onPublish         = None
+        self._onPublish   = None
+        
       
        
     # -----------------------------
     # IMQTTPublisher Implementation
     # -----------------------------
   
+    def setBandwith(self, bandwith):
+        if bandwith <= 0:
+            raise VauleError("Bandwith should be a positive number")
+        self._bandwith = bandwith
+
     
     def publish(self, topic, message, qos=0, retain=False):
         '''
@@ -161,6 +171,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         request.retain  = retain
         request.dup     = False
         return self.state.publish(request)
+
 
     # ---------------------------------
     # IMQTTSubscriber Implementation
@@ -414,7 +425,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         else:
             request.msgId    = self.factory.makeId()
             request.deferred = defer.Deferred()
-            request.interval = Interval()
+            request.interval = IntervalLinear(bandwith=self._bandwith)
         
         try:
             request.encode()
@@ -529,7 +540,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         request.encoded[0] |=  (dup << 3)   # set the dup flag
         request.dup = dup
         if request.interval:    # Handle timeouts for QoS 1 and 2
-            request.alarm = self.callLater(request.interval(), self._publishError, request)
+            request.alarm = self.callLater(request.interval(len(request.encoded)), self._publishError, request)
         if request.msgId is None:
             log.debug("==> {packet:7} (id={request.msgId} qos={request.qos} dup={dup})", packet="PUBLISH", request=request, dup=dup)
         else:

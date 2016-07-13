@@ -472,3 +472,103 @@ class TestMQTTPublisherForbiddenOps(unittest.TestCase):
         def onPublish(topic, payload, qos, dup, retain, msgId):
             pass
         self.assertRaises(MQTTStateError, self.protocol.setPublishHandler, onPublish)
+
+
+
+class TestMQTTPublisherIntervals(unittest.TestCase):
+
+
+    def setUp(self):
+        '''
+        Set up a conencted state
+        '''
+        self.transport = proto_helpers.StringTransportWithDisconnection()
+        self.clock     = task.Clock()
+        MQTTBaseProtocol.callLater = self.clock.callLater
+        self.factory   = MQTTFactory(MQTTFactory.PUBLISHER)
+        self.addr = IPv4Address('TCP','localhost',1880)
+        self._rebuild()
+        # Just to generate connection contexts
+        
+
+    def _connect(self, cleanStart=True):
+        '''
+        Go to connected state
+        '''
+        ack = CONNACK()
+        ack.session = False
+        ack.resultCode = 0
+        ack.encode()
+        self.protocol.connect("TwistedMQTT-pub", keepalive=0, cleanStart=cleanStart, version=v31)
+        self.transport.clear()
+        self.protocol.dataReceived(ack.encoded)
+
+    def _rebuild(self):
+        self.protocol  = self.factory.buildProtocol(self.addr)
+        self.transport.protocol = self.protocol
+        MQTTBaseProtocol.callLater = self.clock.callLater
+        self.protocol.makeConnection(self.transport)
+
+
+    def _publish(self, n, qos, topic, msg, window=None):
+        if window is None:
+            self.protocol.setWindowSize(n)
+        else:
+            self.protocol.setWindowSize(window)
+        dl = []
+        for i in range(0,n):
+            dl.append(self.protocol.publish(topic=topic, qos=qos, message=msg))
+        self.transport.clear()
+        for d in dl:
+            if qos == 0:
+                self.assertEqual(None, self.successResultOf(d))
+            else:
+                self.assertNoResult(d)
+        return dl
+    
+    def _puback(self, dl):
+        ackl = []
+        for i in range(0, len(dl)):
+            ack= PUBACK()
+            ack.msgId = dl[i].msgId
+            ackl.append(ack)
+        encoded = bytearray()
+        for ack in ackl:
+            encoded.extend(ack.encode())
+        self.protocol.dataReceived(encoded)
+        self.transport.clear()
+        for i in range(0, len(dl)):
+            self.assertEqual(dl[i].msgId, self.successResultOf(dl[i]))
+
+    def test_publish_very_large_qos1(self):
+        message = '0123456789ABCDEF'*1000000 # Large PDU
+        self._connect()
+
+        # Test at 1MByte/sec
+        self.protocol.setBandwith(1000000.0)
+        d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message=message)
+        self.assertEqual(self.protocol.factory.windowPublish[self.addr][1].dup, False)
+        self.transport.clear()
+        self.clock.advance(10)
+        self.assertEqual(self.protocol.factory.windowPublish[self.addr][1].dup, False)
+        ack = PUBACK()
+        ack.msgId = d.msgId
+        self.protocol.dataReceived(ack.encode())
+        self.transport.clear()
+        self.assertEqual(ack.msgId, self.successResultOf(d))
+
+        # A large PDU with a large bandwith estimation may retransmit
+        self.protocol.setBandwith(10000000.0)
+        d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message=message)
+        self.assertEqual(self.protocol.factory.windowPublish[self.addr][2].dup, False)
+        self.transport.clear()
+        self.clock.advance(10)
+        self.assertEqual(self.protocol.factory.windowPublish[self.addr][2].dup, True)
+        ack = PUBACK()
+        ack.msgId = d.msgId
+        self.protocol.dataReceived(ack.encode())
+        self.transport.clear()
+        self.assertEqual(ack.msgId, self.successResultOf(d))
+
+    
+
