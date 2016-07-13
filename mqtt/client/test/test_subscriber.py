@@ -350,28 +350,28 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         self.failureResultOf(d).trap(error.ConnectionDone)
 
     def test_disconnect_5(self):
-        '''connect with persistent session, generate a deferred and disconnect
-        Note: the subscriber has no persistent data'''
+        '''connect with persistent session, 
+        enerate a deferred that will not errback 
+        and then disconnect'''
         self._connect(cleanStart=False)
         self.protocol.setDisconnectCallback(self._disconnected)
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.protocol.disconnect()
         self.assertEqual(self.disconnected, False)
-        self.failureResultOf(d).trap(error.ConnectionDone)
+        self.assertNoResult(d)
 
     def test_disconnect_6(self):
-        '''connect with persistent session, generate a deferred , rebuilds protocol
-        Note: the subscriber has no persistent data'''
+        '''connect with persistent session, 
+        generate a deferred that will not errback yet, 
+        then rebuilds protocol'''
         self._connect(cleanStart=False)
         self.protocol.setDisconnectCallback(self._disconnected)
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self._serverDown()
         self._rebuild()
         self.assertEqual(self.disconnected, False)
-        self.failureResultOf(d).trap(error.ConnectionDone)
-
-
+        self.assertNoResult(d)
 
 
 class TestMQTTSubscriber2(unittest.TestCase):
