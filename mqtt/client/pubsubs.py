@@ -205,8 +205,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle SUBACK control packet received.
         '''
         log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="SUBACK",  response=response)
-        request = self._windowSubscribe[response.msgId]
-        del self._windowSubscribe[response.msgId]
+        request = self.factory.windowSubscribe[self.factory.addr][response.msgId]
+        del self.factory.windowSubscribe[self.factory.addr][response.msgId]
         request.alarm.cancel()
         request.deferred.callback(response.granted)
        
@@ -361,7 +361,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         request.interval = Interval()
         request.deferred = defer.Deferred()
         request.deferred.msgId = request.msgId
-        self._windowSubscribe[request.msgId] = request
+        self.factory.windowSubscribe[self.factory.addr][request.msgId] = request
         self._retrySubscribe(request, False)
         return  request.deferred 
 
@@ -437,7 +437,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         if self._version == v31:
             request.encoded[0] |=  (dup << 3)   # set the dup flag
-        interval = request.interval() + 0.25*len(self._windowSubscribe)
+        interval = request.interval() + 0.25*len(self.factory.windowSubscribe[self.factory.addr])
         request.alarm = self.callLater(interval, self._subscribeError, request)
         log.debug("==> {packet:7} (id={request.msgId:04x} dup={dup})", packet="SUBSCRIBE", request=request, dup=dup)
         self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
@@ -486,7 +486,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Assert subscribe parameters
         '''
-        if len(self._windowSubscribe) == self._window:
+        if len(self.factory.windowSubscribe[self.factory.addr]) == self._window:
             raise MQTTWindowError("subscription requests exceeded limit", self._window)
         if not isinstance(request.topics, list):
             raise TopicTypeError(type(topic))
@@ -622,12 +622,12 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
        
         # Find out pending deferreds
-        if len(self._windowSubscribe) or len(self._windowUnsubscribe):
+        if len(self.factory.windowSubscribe[self.factory.addr]) or len(self._windowUnsubscribe):
             pendingDeferred = True
         else:
             pendingDeferred = False
         # Cancel Alarms first
-        for _, request in self._windowSubscribe.items():
+        for _, request in self.factory.windowSubscribe[self.factory.addr].items():
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
@@ -635,16 +635,16 @@ class MQTTProtocol(MQTTBaseProtocol):
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
-        # Then, invoke errbacks anyway, 
-        # since we do not persist SUBCRIBE/UNSUBSCRIBE ack state
-        for k in self._windowSubscribe.keys():
-            request = self._windowSubscribe[k]
-            del self._windowSubscribe[k]
-            request.deferred.errback(reason)
-        for k in self._windowUnsubscribe.keys():
-            request = self._windowUnsubscribe[k]
-            del self._windowUnsubscribe[k]
-            request.deferred.errback(reason)
+        # Then, invoke errbacks anyway if we do not persist state
+        if self._cleanStart:
+            for k in self.factory.windowSubscribe[self.factory.addr].keys():
+                request = self.factory.windowSubscribe[self.factory.addr][k]
+                del self.factory.windowSubscribe[self.factory.addr][k]
+                request.deferred.errback(reason)
+            for k in self._windowUnsubscribe.keys():
+                request = self._windowUnsubscribe[k]
+                del self._windowUnsubscribe[k]
+                request.deferred.errback(reason)
         return not pendingDeferred
        
 
