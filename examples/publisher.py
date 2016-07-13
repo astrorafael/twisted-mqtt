@@ -56,7 +56,10 @@ class MyService(ClientService):
         d.addCallbacks(self.prepareToPublish, self.printError)
         
     def prepareToPublish(self, *args):
-        self.protocol.setWindowSize(3)  # We are issuing 3 publish in a row
+        # We are issuing 3 publish in a row
+        # if order matters, then set window size to 1
+        # Publish requests beyond window size are enqueued
+        self.protocol.setWindowSize(3)  
         self.task = task.LoopingCall(self.publish)
         self.task.start(5.0)
 

@@ -27,6 +27,16 @@ or from GitHub:
 	cd twisted-mqtt
 	sudo python setup.py install
 
+Change Log
+----------
+
+* Version 0.2.1 was a major internal refactoring of the publish,  subscribe and pubsubs roles over 0.1.6.
+* Version 0.2.2 is backwards compatible with 0.2.1, with three enhancements:
+    - Persistent ***per-connection state*** (Pending Publish & Subscription ACKs). Verion 0.2.1 cannot be used with two simultaneous, different MQTT broker connections.
+    - Internal queue to hold PUBLISH requests beyond the window size.
+    - Adaptive timeouts depending on PUBLISH PDU size and a bandwith estimate. New protocol API function `setBandwith()`. This will avoid dupicate payloads using QoS 1 and 2.
+
+
 Credits
 -------
 
@@ -109,7 +119,10 @@ class MyService(ClientService):
         d.addCallbacks(self.prepareToPublish, self.printError)
         
     def prepareToPublish(self, *args):
-        self.protocol.setWindowSize(3)  # We are issuing 3 publish in a row
+        # We are issuing 3 publish in a row
+        # if order matters, then set window size to 1
+        # Publish requests beyond window size are enqueued
+        self.protocol.setWindowSize(3) 
         self.task = task.LoopingCall(self.publish)
         self.task.start(5.0)
 
@@ -197,6 +210,10 @@ class MyService(ClientService):
         self.protocol = p
         d = p.connect("TwistedMQTT-subs", keepalive=0)
         d.addCallback(self.subscribe)
+        # We are issuing 3 subscriptions in a row
+        # Subscription requests beyond window size 
+        # invoke errback with MQTTWindowError exception
+        self.protocol.setWindowSize(3) 
 
     def subscribe(self, *args):
         d = self.protocol.subscribe("foo/bar/baz1", 2 )

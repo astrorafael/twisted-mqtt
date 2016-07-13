@@ -53,7 +53,10 @@ class MyService(ClientService):
         self.protocol = p
         d = p.connect("TwistedMQTT-subs", keepalive=0)
         d.addCallback(self.subscribe)
-        self.protocol.setWindowSize(3)  # We are issuing 3 subscriptions in a row
+        # We are issuing 3 subscriptions in a row
+        # Subscription requests beyond window size 
+        # invoke errback with MQTTWindowError exception
+        self.protocol.setWindowSize(3) 
 
     def subscribe(self, *args):
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
