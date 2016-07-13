@@ -211,12 +211,19 @@ class TestMQTTPublisher1(unittest.TestCase):
         '''
         self._connect()
         window = 3
-        n = 6
+        n = 7
         dl = self._publish(n=n, window=window, qos=1, topic="foo/bar/baz", msg="Hello World")
         self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  window)
         self.assertEqual(len(self.protocol.factory.queuePublishTx[self.addr]), n-window)
-        self._puback(dl)
+        self._puback(dl[0:window])
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  window)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[self.addr]), 1)
+        self._puback(dl[window:2*window])
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  1)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[self.addr]), 0)
+        self._puback(dl[2*window:])
         self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[self.addr]), 0)
 
     def test_publish_many_qos2(self):
         '''
