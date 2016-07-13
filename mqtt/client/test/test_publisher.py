@@ -129,9 +129,8 @@ class TestMQTTPublisher1(unittest.TestCase):
             comp= PUBCOMP()
             comp.msgId = dl[i].msgId
             compl.append(comp)
-            print("AJAAAAA %d" % (dl[i].msgId,) )
         encoded = bytearray()
-        for rec in compl:
+        for comp in compl:
             encoded.extend(comp.encode())
         self.protocol.dataReceived(encoded)
         self.transport.clear()
@@ -259,7 +258,7 @@ class TestMQTTPublisher1(unittest.TestCase):
         self._pubrec(dl[:-1])   # Only the first two
 
         self._serverDown()
-        self.assertNoResult(dl[self.addr])
+        self.assertNoResult(dl[0])
         self.assertNoResult(dl[1])
         self.assertNoResult(dl[2])
         self._rebuild()

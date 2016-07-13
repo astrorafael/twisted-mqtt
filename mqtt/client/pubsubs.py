@@ -273,7 +273,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         request.alarm.cancel()
         request.deferred.callback(request.msgId)
         del self.factory.windowPublish[self.factory.addr][response.msgId]
-        self._copyPublish(dup=False)
+        self._refillPublish(dup=False)
 
     # --------------------------------------------------------------------------
 
@@ -307,7 +307,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         reply.alarm.cancel()
         reply.deferred.callback(reply.msgId)
         del self.factory.windowPubRelease[self.factory.addr][reply.msgId]
-        self._copyPublish(dup=False)
+        self._refillPublish(dup=False)
 
 
     # --------------------------
@@ -420,7 +420,7 @@ class MQTTProtocol(MQTTBaseProtocol):
 
         self.factory.queuePublishTx[self.factory.addr].append(request)
         request.deferred.msgId = request.msgId
-        self._copyPublish(dup=False)
+        self._refillPublish(dup=False)
         return  request.deferred 
 
 
@@ -506,9 +506,9 @@ class MQTTProtocol(MQTTBaseProtocol):
     # Helper methods (publisher)
     # --------------------------
 
-    def _copyPublish(self, dup):
+    def _refillPublish(self, dup):
         '''
-        Transmit/Retransmit several PUBLISH packets 
+        Refills the Publisher transmission window from the queue 
         '''
         cnx = self.factory.addr
         N = min(self._window - len(self.factory.windowPublish[cnx]), len(self.factory.queuePublishTx[cnx]))
@@ -575,10 +575,6 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Assert publish parameters
         '''
-        # Now that we have a buffer, not anymore
-        #if len(self.factory.windowPublish[self.factory.addr]) + len(self.factory.windowPubRelease[self.factory.addr]) == self._window:
-        #    raise MQTTWindowError("publish requests exceeded limit", self._window)
-    
         if not ( 0<= request.qos < 3):
             raise QoSValueError("publish()",request.qos)
     
@@ -589,9 +585,9 @@ class MQTTProtocol(MQTTBaseProtocol):
         Tries to restore the session state upon a new MQTT connection made (publisher)
         '''
         log.debug("{event}", event="Sync Persistent Session")
-        for reply in self.factory.windowPubRelease[self.factory.addr]:
+        for _, reply in self.factory.windowPubRelease[self.factory.addr].items():
             self._retryRelease(reply, dup=True)
-        for request in self.factory.windowPublish[self.factory.addr]:
+        for _, request in self.factory.windowPublish[self.factory.addr].items():
             self._retryPublish(request, dup=True)
 
     # --------------------------------------------------------------------------
@@ -601,12 +597,16 @@ class MQTTProtocol(MQTTBaseProtocol):
         Purges the persistent state in the client 
         '''
         log.debug("{event}", event="Clean Persistent Session")
-        while len(self.factory.windowPublish[self.factory.addr]):
-            request = self.factory.windowPublish[self.factory.addr].popleft()
+        for k in self.factory.windowPublish[self.factory.addr].keys():
+            request = self.factory.windowPublish[self.factory.addr][k]
+            del self.factory.windowPublish[self.factory.addr][k]
             request.deferred.errback(MQTTSessionCleared)
-        while len(self.factory.windowPubRelease[self.factory.addr]):
-            request = self.factory.windowPubRelease[self.factory.addr].popleft()
+
+        for k in self.factory.windowPubRelease[self.factory.addr].keys():
+            request = self.factory.windowPubRelease[self.factory.addr][k]
+            del self.factory.windowPubRelease[self.factory.addr][k]
             request.deferred.errback(MQTTSessionCleared)
+
 
     # -------------------------------------
     # Helper methods (publisher/subscriber)
@@ -655,22 +655,25 @@ class MQTTProtocol(MQTTBaseProtocol):
         else:
             pendingDeferred = False
         # Cancel Alarms first
-        for request in self.factory.windowPublish[self.factory.addr]:
+        for _, request in self.factory.windowPublish[self.factory.addr].items():
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
-        for request in self.factory.windowPubRelease[self.factory.addr]:
+        for _, request in self.factory.windowPubRelease[self.factory.addr].items():
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
         # Then, invoke errbacks if we do not persist state
         if self._cleanStart:
-            while len(self.factory.windowPubRelease[self.factory.addr]):
-                request = self.factory.windowPubRelease[self.factory.addr].popleft()
+            for k in self.factory.windowPubRelease[self.factory.addr].keys():
+                request = self.factory.windowPubRelease[self.factory.addr][k]
+                del self.factory.windowPubRelease[self.factory.addr][k]
                 request.deferred.errback(reason)
-            while len(self.factory.windowPublish[self.factory.addr]):
-                request = self.factory.windowPublish[self.factory.addr].popleft()
-                request.deferred.errback(reason)
+                
+            for k in self.factory.windowPublish[self.factory.addr].keys():
+                request = self.factory.windowPublish[self.factory.addr][k]
+                del self.factory.windowPublish[self.factory.addr][k]
+                request.deferred.errback(reason)   
 
         return not (pendingDeferred and self._cleanStart)
 
