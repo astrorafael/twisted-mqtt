@@ -36,7 +36,7 @@ from mqtt.client.subscriber import MQTTProtocol as MQTTSubscriberProtocol
 from mqtt.client.publisher  import MQTTProtocol as MQTTPublisherProtocol
 from mqtt.client.pubsubs    import MQTTProtocol as MQTTPubSubsProtocol
 
-
+from twisted.internet.address import IPv4Address
 
 
 
@@ -51,7 +51,10 @@ class TestMQTTPublisher1(unittest.TestCase):
         self.clock     = task.Clock()
         MQTTBaseProtocol.callLater = self.clock.callLater
         self.factory   = MQTTFactory(MQTTFactory.PUBLISHER)
+        self.addr = IPv4Address('TCP','localhost',1880)
         self._rebuild()
+        # Just to generate connection contexts
+        
 
     def _connect(self, cleanStart=True):
         '''
@@ -72,7 +75,7 @@ class TestMQTTPublisher1(unittest.TestCase):
         del self.protocol
 
     def _rebuild(self):
-        self.protocol  = self.factory.buildProtocol(0)
+        self.protocol  = self.factory.buildProtocol(self.addr)
         self.transport.protocol = self.protocol
         MQTTBaseProtocol.callLater = self.clock.callLater
         self.protocol.makeConnection(self.transport)
@@ -126,6 +129,7 @@ class TestMQTTPublisher1(unittest.TestCase):
             comp= PUBCOMP()
             comp.msgId = dl[i].msgId
             compl.append(comp)
+            print("AJAAAAA %d" % (dl[i].msgId,) )
         encoded = bytearray()
         for rec in compl:
             encoded.extend(comp.encode())
@@ -139,74 +143,74 @@ class TestMQTTPublisher1(unittest.TestCase):
     def test_publish_single_qos0(self):
         self._connect()
         d = self.protocol.publish(topic="foo/bar/baz1", qos=0, message="hello world 0")
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
         self.assertEqual(None, self.successResultOf(d))
 
     def test_publish_single_qos1(self):
         self._connect()
         d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  1)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  1)
         self.transport.clear()
         ack = PUBACK()
         ack.msgId = d.msgId
         self.protocol.dataReceived(ack.encode())
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
         self.assertEqual(ack.msgId, self.successResultOf(d))
 
     def test_publish_single_qos2(self):
         self._connect()
         d = self.protocol.publish(topic="foo/bar/baz1", qos=2, message="hello world 2")
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  1)
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 0)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  1)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 0)
         self.transport.clear()
         ack = PUBREC()
         ack.msgId = d.msgId
         self.protocol.dataReceived(ack.encode())
         self.transport.clear()
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  0)
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 1)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 1)
         ack = PUBCOMP()
         ack.msgId = d.msgId
         self.protocol.dataReceived(ack.encode())
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  0)
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 0)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 0)
         self.assertEqual(ack.msgId, self.successResultOf(d))
 
     def test_publish_several_qos0(self):
         self._connect()
         dl = self._publish(n=3, qos=0, topic="foo/bar/baz", msg="Hello World")
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
         
 
     def test_publish_several_qos1(self):
         self._connect()
         dl = self._publish(n=3, qos=1, topic="foo/bar/baz", msg="Hello World")
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  len(dl))
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  len(dl))
         self._puback(dl)
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
         
 
     def test_publish_several_qos2(self):
         self._connect()
         dl = self._publish(n=3, qos=2, topic="foo/bar/baz", msg="Hello World")
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  len(dl))
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 0)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  len(dl))
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 0)
         self._pubrec(dl)
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  0)
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), len(dl))
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), len(dl))
         self._pubcomp(dl)
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  0)
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 0)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 0)
 
 
     def test_lost_session(self):
         self._connect()
         dl = self._publish(n=3, qos=2, topic="foo/bar/baz", msg="Hello World")
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  len(dl))
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 0)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  len(dl))
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 0)
         self._serverDown()
-        self.assertEqual(len(self.factory.windowPublish[0]),  0)
-        self.assertEqual(len(self.factory.windowPubRelease[0]), 0)
+        self.assertEqual(len(self.factory.windowPublish[self.addr]),  0)
+        self.assertEqual(len(self.factory.windowPubRelease[self.addr]), 0)
         for d in dl:
             self.failureResultOf(d).trap(error.ConnectionDone)
        
@@ -214,36 +218,36 @@ class TestMQTTPublisher1(unittest.TestCase):
     def test_persistent_session_qos1(self):
         self._connect(cleanStart=False)
         dl = self._publish(n=3, qos=1, topic="foo/bar/baz", msg="Hello World")
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  len(dl))
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  len(dl))
         self._serverDown()
-        self.assertEqual(len(self.factory.windowPublish[0]),  len(dl))
+        self.assertEqual(len(self.factory.windowPublish[self.addr]),  len(dl))
         for d in dl:
             self.assertNoResult(d)
         self._rebuild()
         self._connect(cleanStart=False)
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  len(dl))
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  len(dl))
         self._puback(dl)
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
 
 
     def test_persistent_session_qos2(self):
         self._connect(cleanStart=False)
         dl = self._publish(n=3, qos=2, topic="foo/bar/baz", msg="Hello World")
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  len(dl))
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 0)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  len(dl))
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 0)
         self._serverDown()
         for d in dl:
             self.assertNoResult(d)
         self._rebuild()
         self._connect(cleanStart=False)
-        self.assertEqual(len(self.factory.windowPublish[0]),  len(dl))
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 0)
+        self.assertEqual(len(self.factory.windowPublish[self.addr]),  len(dl))
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 0)
         self._pubrec(dl)
-        self.assertEqual(len(self.factory.windowPublish[0]), 0 )
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), len(dl))
+        self.assertEqual(len(self.factory.windowPublish[self.addr]), 0 )
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), len(dl))
         self._pubcomp(dl)
-        self.assertEqual(len(self.factory.windowPublish[0]),  0)
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 0)
+        self.assertEqual(len(self.factory.windowPublish[self.addr]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 0)
 
 
 
@@ -255,26 +259,26 @@ class TestMQTTPublisher1(unittest.TestCase):
         self._pubrec(dl[:-1])   # Only the first two
 
         self._serverDown()
-        self.assertNoResult(dl[0])
+        self.assertNoResult(dl[self.addr])
         self.assertNoResult(dl[1])
         self.assertNoResult(dl[2])
         self._rebuild()
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]),  1)
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]),  2)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  1)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]),  2)
         # Reconnect with the new client protcol object
         self._connect(cleanStart=False)
         self._pubrec(dl[-1:])   # send the last one
-        self.assertEqual(len(self.protocol.factory.windowPublish[0]), 0)
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 3)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]), 0)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 3)
         self._pubcomp(dl[0:1])   # send the first comp
-        self.assertEqual(len(self.factory.windowPublish[0]),  0)
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 2)
+        self.assertEqual(len(self.factory.windowPublish[self.addr]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 2)
         self._pubcomp(dl[1:2])   # send the second comp
-        self.assertEqual(len(self.factory.windowPublish[0]),  0)
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 1)
+        self.assertEqual(len(self.factory.windowPublish[self.addr]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 1)
         self._pubcomp(dl[-1:])   # send the last comp
-        self.assertEqual(len(self.factory.windowPublish[0]),  0)
-        self.assertEqual(len(self.protocol.factory.windowPubRelease[0]), 0)
+        self.assertEqual(len(self.factory.windowPublish[self.addr]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 0)
 
 
 class TestMQTTPublisherDisconnect(unittest.TestCase):
