@@ -515,7 +515,6 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         cnx = self.factory.addr
         N = min(self._window - len(self.factory.windowPublish[cnx]), len(self.factory.queuePublishTx[cnx]))
-        log.debug("Copying {N} requests to Tx window",N=N)
         for i in range(0,N):
             request = self.factory.queuePublishTx[cnx].popleft()
             if request.msgId:   # only form QoS 1 & 2

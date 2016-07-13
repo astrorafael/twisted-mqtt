@@ -81,8 +81,11 @@ class TestMQTTPublisher1(unittest.TestCase):
         self.protocol.makeConnection(self.transport)
 
 
-    def _publish(self, n, qos, topic, msg):
-        self.protocol.setWindowSize(n)
+    def _publish(self, n, qos, topic, msg, window=None):
+        if window is None:
+            self.protocol.setWindowSize(n)
+        else:
+            self.protocol.setWindowSize(window)
         dl = []
         for i in range(0,n):
             dl.append(self.protocol.publish(topic=topic, qos=qos, message=msg))
@@ -200,6 +203,39 @@ class TestMQTTPublisher1(unittest.TestCase):
         self._pubcomp(dl)
         self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
         self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 0)
+
+
+    def test_publish_many_qos1(self):
+        '''
+        Test enqueuing when not all ACKs arrives
+        '''
+        self._connect()
+        window = 3
+        n = 6
+        dl = self._publish(n=n, window=window, qos=1, topic="foo/bar/baz", msg="Hello World")
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  window)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[self.addr]), n-window)
+        self._puback(dl)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
+
+    def test_publish_many_qos2(self):
+        '''
+        Test enqueuing when not all ACKs arrives
+        '''
+        self._connect()
+        window = 3
+        n = 7
+        dl = self._publish(n=n, window=window, qos=2, topic="foo/bar/baz", msg="Hello World")
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  window)
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[self.addr]), n-window)
+        self._pubrec(dl[0:window])
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  0)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), window)
+        self._pubcomp(dl[0:window])
+        self.assertEqual(len(self.protocol.factory.queuePublishTx[self.addr]), n-2*window)
+        self.assertEqual(len(self.protocol.factory.windowPublish[self.addr]),  window)
+        self.assertEqual(len(self.protocol.factory.windowPubRelease[self.addr]), 0)
+
 
 
     def test_lost_session(self):
