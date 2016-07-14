@@ -135,6 +135,7 @@ class MQTTProtocol(MQTTBaseProtocol):
     '''
 
     DEFAULT_BANDWITH = 10000
+    DEFAULT_FACTOR   = 2
 
     def __init__(self, factory):
         MQTTBaseProtocol.__init__(self, factory) 
@@ -147,6 +148,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         self.addr          = self.factory.addr
         # Estimated bandwith in bytes/sec for PUBLISH PDUs
         self._bandwith     =  self.DEFAULT_BANDWITH
+        self._factor       =  self.DEFAULT_FACTOR
         # additional, per-connection subscriber state
         self._onPublish   = None
         
@@ -156,10 +158,13 @@ class MQTTProtocol(MQTTBaseProtocol):
     # IMQTTPublisher Implementation
     # -----------------------------
   
-    def setBandwith(self, bandwith):
+    def setBandwith(self, bandwith, factor=2):
         if bandwith <= 0:
             raise VauleError("Bandwith should be a positive number")
+        if factor <= 0:
+            raise VauleError("Bandwith should be a positive number")
         self._bandwith = bandwith
+        self._factor   = factor
 
     
     def publish(self, topic, message, qos=0, retain=False):
@@ -303,7 +308,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         del self.factory.windowPublish[self.addr][response.msgId]
         reply = PUBREL()
         reply.msgId = response.msgId
-        reply.interval = Interval()
+        reply.interval = Interval(initial=self._initialT)
         reply.deferred = request.deferred       # Transfer the deferred to PUBREL
         reply.retries  = request.retries        # and the retry count
         reply.encode()
@@ -372,7 +377,7 @@ class MQTTProtocol(MQTTBaseProtocol):
             request.encode()
         except Exception as e:
             return defer.fail(e)
-        request.interval = Interval()
+        request.interval = Interval(initial=self._initialT)
         request.deferred = defer.Deferred()
         request.deferred.msgId = request.msgId
         self.factory.windowSubscribe[self.addr][request.msgId] = request
@@ -394,7 +399,7 @@ class MQTTProtocol(MQTTBaseProtocol):
             request.encode() 
         except Exception as e:
             return defer.fail(e)
-        request.interval = Interval()
+        request.interval = Interval(initial=self._initialT)
         request.deferred = defer.Deferred()
         request.deferred.msgId = request.msgId
         self.factory.windowUnsubscribe[self.addr][request.msgId] = request
@@ -428,7 +433,9 @@ class MQTTProtocol(MQTTBaseProtocol):
         else:
             request.msgId    = self.factory.makeId()
             request.deferred = defer.Deferred()
-            request.interval = IntervalLinear(bandwith=self._bandwith)
+            request.interval = IntervalLinear(initial=self._initialT, 
+                                              bandwith=self._bandwith, 
+                                              factor=self._factor)
             request.retries  = 0
         try:
             request.encode()

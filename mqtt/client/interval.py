@@ -7,17 +7,14 @@ class Interval(object):
     
     Use like:
     C{interval = Interval()}
-    C{Interval.maxDelay = 16}
     C{t = interval()}
     C{t = interval()}
 
-    @cvar initial:  Initial interval value, in seconds.
-    @cvar maxDelay: maximun interval value produced, in seconds.
-    @cvar factor:   multiplier for the next interval.
+    @ivar initial:  Initial interval value, in seconds.
+    @ivar maxDelay: maximun interval value produced, in seconds.
+    @ivar factor:   multiplier for the next interval.
     '''
-    initial  = 2
-    factor   = 2
-    maxDelay = 1024
+   
     
     def __init__(self, initial=2, maxDelay=1024, factor=2):
         '''Initialize interval object'''
@@ -42,16 +39,13 @@ class IntervalLinear(object):
     
     Use like:
     C{interval = IntervalLinear()}
-    C{Interval.maxDelay = 16}
     C{t = interval()}
     C{t = interval()}
 
     @ivar initial:  Initial interval value, in seconds.
     @ivar factor:   multiplier for the next interval.
+    @ivar bandwith: estimated bandwith in bytes/sec.
     '''
-    initial   = 2       # seconds
-    factor    = 2
-    bandwidth = 1       # Bytes per second
     
     def __init__(self, initial=2,  factor=2, bandwith=1):
         '''Initialize interval object'''

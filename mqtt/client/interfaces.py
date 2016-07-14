@@ -138,14 +138,15 @@ class IMQTTClientControl(Interface):
         ===========
 
         Set the initial timeout value for retries in PUBLISH, SUBSCRIBE, UNSUBCRIBE,
-        & PUBREL control value. Retries will be done with an exponentially increasing 
-        timeout value up to a limit.
+        & PUBREL control value. Retries for SUBSCRIBE, UNSUBCRIBE,
+        & PUBREL will be done with exponentially backoff timeout value up to a limit. 
+        Retries for PUBLISH will take into account estimated banwidth (see IPublisher)
 
         Signature
         =========
 
         @param timeout: timeout value in seconds.
-        @raise ValueError: if not within [1..Interval.maxDelay]
+        @raise ValueError: if not within [1..TIMEOUT_MAX_INITIAL]
         '''
 
     def setWindowSize(n):
@@ -265,10 +266,22 @@ class IMQTTPublisher(Interface):
     pure publisher MQTT client.
     '''
 
-    def setBandwith(bandwith):
+    def setBandwith(bandwith, factor = 2):
         '''
-        Set the estimate available bandwith to produce timeouts proportional to the payload size.
-        This is useful to avoid timeouts and retransmissions in very large payloads using QoS=1 and 2. 
+        Abstract
+        ========
+
+        Set the estimate available bandwith.
+
+         Description
+        ===========
+
+        Set the estimate available bandwith to produce timeouts proportional 
+        to the payload size, according to the formula:
+        T = initial + (K * payload_size)/bandwith
+             where K = K*factor in each iteration
+        This is useful to avoid timeouts and retransmissions in very 
+        large payloads using QoS=1 and 2. 
         '''
         
     def publish(topic, message, qos=0, retain=False):

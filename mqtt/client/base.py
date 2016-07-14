@@ -281,7 +281,9 @@ class MQTTBaseProtocol(Protocol):
                    0x0C: "PINGREQ", 0x0D: "PINGRESP",    0x0E: "DISCONNECT"}
 
 
-    MAX_WINDOW = 16     # Max value of in-flight PUBLISH/SUBSCRIBE/UNSUBSCRIBE
+    MAX_WINDOW          = 16   # Max value of in-flight PUBLISH/SUBSCRIBE/UNSUBSCRIBE
+    TIMEOUT_INITIAL     = 4    # Initial tiemout for retransmissions
+    TIMEOUT_MAX_INITIAL = 1024 # Maximun value for initial timeout
 
     def __init__(self, factory):
         self.IDLE        = IdleState(self)
@@ -289,6 +291,7 @@ class MQTTBaseProtocol(Protocol):
         self.CONNECTED   = ConnectedState(self)
         self.state       = self.IDLE
         self.factory     = factory
+        self._initialT   = self.TIMEOUT_INITIAL # Initial timeout for retransmissions
         self._version    = v311 # default protocol version
         self._buffer     = bytearray()
         self._keepalive  = 0    # keepalive (in ms) disabled by default
@@ -510,9 +513,9 @@ class MQTTBaseProtocol(Protocol):
         '''
         API Entry Point
         '''
-        if not ( 1 <= timeout <= Interval.maxDelay ):
+        if not ( 1 <= timeout <= self.TIMEOUT_MAX_INITIAL ):
              raise TimeoutValueError(timeout)
-        Interval.initial = timeout
+        self._initialT = timeout
 
     # --------------------------------------------------------------------------
 
