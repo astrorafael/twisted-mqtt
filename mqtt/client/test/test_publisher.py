@@ -51,7 +51,6 @@ class TestMQTTPublisher1(unittest.TestCase):
         self.clock     = task.Clock()
         MQTTBaseProtocol.callLater = self.clock.callLater
         self.factory   = MQTTFactory(MQTTFactory.PUBLISHER)
-        self.addr = IPv4Address('TCP','localhost',1880)
         self._rebuild()
         # Just to generate connection contexts
         
@@ -75,6 +74,7 @@ class TestMQTTPublisher1(unittest.TestCase):
         del self.protocol
 
     def _rebuild(self):
+        self.addr = IPv4Address('TCP','localhost',1880)
         self.protocol  = self.factory.buildProtocol(self.addr)
         self.transport.protocol = self.protocol
         MQTTBaseProtocol.callLater = self.clock.callLater

@@ -143,6 +143,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         self.CONNECTING    = ConnectingState(self)
         self.CONNECTED     = ConnectedState(self)
         self.state         = self.IDLE
+        # Copies addr
+        self.addr          = self.factory.addr
         # Estimated bandwith in bytes/sec for PUBLISH PDUs
         self._bandwith     =  self.DEFAULT_BANDWITH
         # additional, per-connection subscriber state
@@ -215,8 +217,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle SUBACK control packet received.
         '''
         log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="SUBACK",  response=response)
-        request = self.factory.windowSubscribe[self.factory.addr][response.msgId]
-        del self.factory.windowSubscribe[self.factory.addr][response.msgId]
+        request = self.factory.windowSubscribe[self.addr][response.msgId]
+        del self.factory.windowSubscribe[self.addr][response.msgId]
         request.alarm.cancel()
         request.deferred.callback(response.granted)
        
@@ -227,8 +229,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle UNSUBACK control packet received.
         '''
         log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="UNSUBACK",  response=response)
-        request = self.factory.windowUnsubscribe[self.factory.addr][response.msgId]
-        del self.factory.windowUnsubscribe[self.factory.addr][response.msgId]
+        request = self.factory.windowUnsubscribe[self.addr][response.msgId]
+        del self.factory.windowUnsubscribe[self.addr][response.msgId]
         request.alarm.cancel()
         request.deferred.callback(response.msgId)
 
@@ -250,7 +252,7 @@ class MQTTProtocol(MQTTBaseProtocol):
             self._deliver(response)
         elif response.qos == 2:
             log.debug("==> {packet:7} (id={response.msgId:04x} qos={response.qos} dup={response.dup} retain={response.retain} topic={response.topic})" , packet="PUBLISH", response=response)
-            self.factory.windowPubRx[self.factory.addr][response.msgId] = response
+            self.factory.windowPubRx[self.addr][response.msgId] = response
             reply = PUBREC()
             reply.msgId = response.msgId
             log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="PUBREC", response=response)
@@ -263,8 +265,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle PUBREL control packet received.
         '''
         log.debug("==> {packet:7}(id={response.msgId:04x} dup={response.dup})" , packet="PUBREL", response=response)
-        msg = self.factory.windowPubRx[self.factory.addr][response.msgId]
-        del self.factory.windowPubRx[self.factory.addr][response.msgId]
+        msg = self.factory.windowPubRx[self.addr][response.msgId]
+        del self.factory.windowPubRx[self.addr][response.msgId]
         self._deliver(msg)
         reply = PUBCOMP()
         reply.msgId = response.msgId
@@ -280,12 +282,12 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle PUBACK control packet received (QoS=1).
         '''
-        # so:  response.msgId == windowPublish[self.factory.addr][0].msgId
+        # so:  response.msgId == windowPublish[self.addr][0].msgId
         log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBACK", response=response)
-        request = self.factory.windowPublish[self.factory.addr][response.msgId]
+        request = self.factory.windowPublish[self.addr][response.msgId]
         request.alarm.cancel()
         request.deferred.callback(request.msgId)
-        del self.factory.windowPublish[self.factory.addr][response.msgId]
+        del self.factory.windowPublish[self.addr][response.msgId]
         self._refillPublish(dup=False)
 
     # --------------------------------------------------------------------------
@@ -294,17 +296,17 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle PUBREC control packet received (QoS=2).
         '''
-        # so:  response.msgId == windowPublish[self.factory.addr][0].msgId
+        # so:  response.msgId == windowPublish[self.addr][0].msgId
         log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBREC", response=response)
-        request = self.factory.windowPublish[self.factory.addr][response.msgId]
+        request = self.factory.windowPublish[self.addr][response.msgId]
         request.alarm.cancel()
-        del self.factory.windowPublish[self.factory.addr][response.msgId]
+        del self.factory.windowPublish[self.addr][response.msgId]
         reply = PUBREL()
         reply.msgId = response.msgId
         reply.interval = Interval()
         reply.deferred = request.deferred       # Transfer the deferred to PUBREL
         reply.encode()
-        self.factory.windowPubRelease[self.factory.addr][reply.msgId] = reply
+        self.factory.windowPubRelease[self.addr][reply.msgId] = reply
         self._retryRelease(reply, False)
 
 
@@ -316,10 +318,10 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         # Same comment as PUBACK
         log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBCOMP", response=response)
-        reply = self.factory.windowPubRelease[self.factory.addr][response.msgId]
+        reply = self.factory.windowPubRelease[self.addr][response.msgId]
         reply.alarm.cancel()
         reply.deferred.callback(reply.msgId)
-        del self.factory.windowPubRelease[self.factory.addr][reply.msgId]
+        del self.factory.windowPubRelease[self.addr][reply.msgId]
         self._refillPublish(dup=False)
 
 
@@ -372,7 +374,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         request.interval = Interval()
         request.deferred = defer.Deferred()
         request.deferred.msgId = request.msgId
-        self.factory.windowSubscribe[self.factory.addr][request.msgId] = request
+        self.factory.windowSubscribe[self.addr][request.msgId] = request
         self._retrySubscribe(request, False)
         return  request.deferred 
 
@@ -394,7 +396,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         request.interval = Interval()
         request.deferred = defer.Deferred()
         request.deferred.msgId = request.msgId
-        self.factory.windowUnsubscribe[self.factory.addr][request.msgId] = request
+        self.factory.windowUnsubscribe[self.addr][request.msgId] = request
         self._retryUnsubscribe(request, dup=False)
         return  request.deferred
 
@@ -432,7 +434,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         except Exception as e:
             return defer.fail(e)
 
-        self.factory.queuePublishTx[self.factory.addr].append(request)
+        self.factory.queuePublishTx[self.addr].append(request)
         request.deferred.msgId = request.msgId
         self._refillPublish(dup=False)
         return  request.deferred 
@@ -448,7 +450,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         if self._version == v31:
             request.encoded[0] |=  (dup << 3)   # set the dup flag
-        interval = request.interval() + 0.25*len(self.factory.windowSubscribe[self.factory.addr])
+        interval = request.interval() + 0.25*len(self.factory.windowSubscribe[self.addr])
         request.alarm = self.callLater(interval, self._subscribeError, request)
         log.debug("==> {packet:7} (id={request.msgId:04x} dup={dup})", packet="SUBSCRIBE", request=request, dup=dup)
         self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
@@ -461,7 +463,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         if self._version == v31:
             request.encoded[0] |=  (dup << 3)   # set the dup flag
-        interval = request.interval() + 0.25*len(self.factory.windowUnsubscribe[self.factory.addr])
+        interval = request.interval() + 0.25*len(self.factory.windowUnsubscribe[self.addr])
         request.alarm = self.callLater(interval, self._unsubscribeError, request)
         log.debug("==> {packet:7} (id={request.msgId:04x} dup={dup})", packet="UNSUBSCRIBE", request=request, dup=dup)
         self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
@@ -497,7 +499,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Assert subscribe parameters
         '''
-        if len(self.factory.windowSubscribe[self.factory.addr]) == self._window:
+        if len(self.factory.windowSubscribe[self.addr]) == self._window:
             raise MQTTWindowError("subscription requests exceeded limit", self._window)
         if not isinstance(request.topics, list):
             raise TopicTypeError(type(topic))
@@ -511,7 +513,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Assert unsubscribe parameters
         '''
-        if len(self.factory.windowUnsubscribe[self.factory.addr]) == self._window:
+        if len(self.factory.windowUnsubscribe[self.addr]) == self._window:
             raise MQTTWindowError("unsubscription requests exceeded limit", self._window)
         if not isinstance(request.topics, list):
             raise TopicTypeError(type(topic))
@@ -524,7 +526,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Refills the Publisher transmission window from the queue 
         '''
-        cnx = self.factory.addr
+        cnx = self.addr
         N = min(self._window - len(self.factory.windowPublish[cnx]), len(self.factory.queuePublishTx[cnx]))
         for i in range(0,N):
             request = self.factory.queuePublishTx[cnx].popleft()
@@ -598,9 +600,9 @@ class MQTTProtocol(MQTTBaseProtocol):
         Tries to restore the session state upon a new MQTT connection made (publisher)
         '''
         log.debug("{event}", event="Sync Persistent Session")
-        for _, reply in self.factory.windowPubRelease[self.factory.addr].items():
+        for _, reply in self.factory.windowPubRelease[self.addr].items():
             self._retryRelease(reply, dup=True)
-        for _, request in self.factory.windowPublish[self.factory.addr].items():
+        for _, request in self.factory.windowPublish[self.addr].items():
             self._retryPublish(request, dup=True)
 
     # --------------------------------------------------------------------------
@@ -610,14 +612,14 @@ class MQTTProtocol(MQTTBaseProtocol):
         Purges the persistent state in the client 
         '''
         log.debug("{event}", event="Clean Persistent Session")
-        for k in self.factory.windowPublish[self.factory.addr].keys():
-            request = self.factory.windowPublish[self.factory.addr][k]
-            del self.factory.windowPublish[self.factory.addr][k]
+        for k in self.factory.windowPublish[self.addr].keys():
+            request = self.factory.windowPublish[self.addr][k]
+            del self.factory.windowPublish[self.addr][k]
             request.deferred.errback(MQTTSessionCleared)
 
-        for k in self.factory.windowPubRelease[self.factory.addr].keys():
-            request = self.factory.windowPubRelease[self.factory.addr][k]
-            del self.factory.windowPubRelease[self.factory.addr][k]
+        for k in self.factory.windowPubRelease[self.addr].keys():
+            request = self.factory.windowPubRelease[self.addr][k]
+            del self.factory.windowPubRelease[self.addr][k]
             request.deferred.errback(MQTTSessionCleared)
 
 
@@ -632,28 +634,28 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
        
         # Find out pending deferreds
-        if len(self.factory.windowSubscribe[self.factory.addr]) or len(self.factory.windowUnsubscribe[self.factory.addr]):
+        if len(self.factory.windowSubscribe[self.addr]) or len(self.factory.windowUnsubscribe[self.addr]):
             pendingDeferred = True
         else:
             pendingDeferred = False
         # Cancel Alarms first
-        for _, request in self.factory.windowSubscribe[self.factory.addr].items():
+        for _, request in self.factory.windowSubscribe[self.addr].items():
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
-        for _, request in self.factory.windowUnsubscribe[self.factory.addr].items():
+        for _, request in self.factory.windowUnsubscribe[self.addr].items():
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
         # Then, invoke errbacks anyway if we do not persist state
         if self._cleanStart:
-            for k in self.factory.windowSubscribe[self.factory.addr].keys():
-                request = self.factory.windowSubscribe[self.factory.addr][k]
-                del self.factory.windowSubscribe[self.factory.addr][k]
+            for k in self.factory.windowSubscribe[self.addr].keys():
+                request = self.factory.windowSubscribe[self.addr][k]
+                del self.factory.windowSubscribe[self.addr][k]
                 request.deferred.errback(reason)
-            for k in self.factory.windowUnsubscribe[self.factory.addr].keys():
-                request = self.factory.windowUnsubscribe[self.factory.addr][k]
-                del self.factory.windowUnsubscribe[self.factory.addr][k]
+            for k in self.factory.windowUnsubscribe[self.addr].keys():
+                request = self.factory.windowUnsubscribe[self.addr][k]
+                del self.factory.windowUnsubscribe[self.addr][k]
                 request.deferred.errback(reason)
         return not pendingDeferred
        
@@ -665,29 +667,29 @@ class MQTTProtocol(MQTTBaseProtocol):
         Returns True if we can invoke the disconnect callback
         '''
          # Find out pending deferreds
-        if len(self.factory.windowPubRelease[self.factory.addr]) or len(self.factory.windowPublish[self.factory.addr]):
+        if len(self.factory.windowPubRelease[self.addr]) or len(self.factory.windowPublish[self.addr]):
             pendingDeferred = True
         else:
             pendingDeferred = False
         # Cancel Alarms first
-        for _, request in self.factory.windowPublish[self.factory.addr].items():
+        for _, request in self.factory.windowPublish[self.addr].items():
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
-        for _, request in self.factory.windowPubRelease[self.factory.addr].items():
+        for _, request in self.factory.windowPubRelease[self.addr].items():
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
         # Then, invoke errbacks if we do not persist state
         if self._cleanStart:
-            for k in self.factory.windowPubRelease[self.factory.addr].keys():
-                request = self.factory.windowPubRelease[self.factory.addr][k]
-                del self.factory.windowPubRelease[self.factory.addr][k]
+            for k in self.factory.windowPubRelease[self.addr].keys():
+                request = self.factory.windowPubRelease[self.addr][k]
+                del self.factory.windowPubRelease[self.addr][k]
                 request.deferred.errback(reason)
                 
-            for k in self.factory.windowPublish[self.factory.addr].keys():
-                request = self.factory.windowPublish[self.factory.addr][k]
-                del self.factory.windowPublish[self.factory.addr][k]
+            for k in self.factory.windowPublish[self.addr].keys():
+                request = self.factory.windowPublish[self.addr][k]
+                del self.factory.windowPublish[self.addr][k]
                 request.deferred.errback(reason)   
 
         return not (pendingDeferred and self._cleanStart)
