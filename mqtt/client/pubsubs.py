@@ -336,7 +336,6 @@ class MQTTProtocol(MQTTBaseProtocol):
     # --------------------------
 
     def connectionLost(self, reason):
-        log.debug("CONNECTION LOST")
         MQTTBaseProtocol.connectionLost(self, reason)
         disconnectAllowed1 = self._subs_connectionLost(reason)
         disconnectAllowed2 = self._pub_connectionLost(reason)
