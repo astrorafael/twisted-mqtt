@@ -608,7 +608,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Tries to restore the session state upon a new MQTT connection made (publisher)
         '''
-        log.debug("{event}", event="Sync Persistent Session")
+        #log.debug("{event}", event="Sync Persistent Session")
         for _, reply in self.factory.windowPubRelease[self.addr].items():
             self._retryRelease(reply, dup=True)
         for _, request in self.factory.windowPublish[self.addr].items():
@@ -620,7 +620,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Purges the persistent state in the client 
         '''
-        log.debug("{event}", event="Clean Persistent Session")
+        #log.debug("{event}", event="Clean Persistent Session")
         for k in self.factory.windowPublish[self.addr].keys():
             request = self.factory.windowPublish[self.addr][k]
             del self.factory.windowPublish[self.addr][k]

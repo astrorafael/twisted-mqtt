@@ -71,7 +71,6 @@ class MQTTFactory(ReconnectingClientFactory):
     
 
     def buildProtocol(self, addr):
-        log.debug("MQTT Client Factory buildProtocol({addr})", addr=addr)
         if   self.profile == self.SUBSCRIBER:
             from mqtt.client.subscriber import MQTTProtocol
         elif self.profile == self.PUBLISHER:
@@ -82,22 +81,16 @@ class MQTTFactory(ReconnectingClientFactory):
             raise ProfileValueError("profile value not supported" , self.profile)
         
         v = self.queuePublishTx.get(addr, deque())
-        log.debug("Current Publish Queue length = {N}", N=len(v))
         self.queuePublishTx[addr] = v
         v = self.windowPublish.get(addr, dict() )
-        log.debug("Current Publish Window size = {N}", N=len(v))
         self.windowPublish[addr] = v
         v = self.windowPubRelease.get(addr, dict() )
-        log.debug("Current Publish Release (Publisher) Window size = {N}", N=len(v))
         self.windowPubRelease[addr] = v
         v = self.windowPubRx.get(addr, dict())
-        log.debug("Current Publish Release (Subscriber) Window size = {N}", N=len(v))
         self.windowPubRx[addr] = v
         v = self.windowSubscribe.get(addr, dict() )
-        log.debug("Current Subscribe (Subscriber) Window size = {N}", N=len(v))
         self.windowSubscribe[addr] = v
         v = self.windowUnsubscribe.get(addr, dict())
-        log.debug("Current Unsubscribe (Subscriber) Window size = {N}", N=len(v))
         self.windowUnsubscribe[addr] = v
         return MQTTProtocol(self, addr)
 
