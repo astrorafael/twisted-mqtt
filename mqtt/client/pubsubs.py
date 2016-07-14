@@ -137,7 +137,7 @@ class MQTTProtocol(MQTTBaseProtocol):
     DEFAULT_BANDWITH = 10000
     DEFAULT_FACTOR   = 2
 
-    def __init__(self, factory):
+    def __init__(self, factory, addr):
         MQTTBaseProtocol.__init__(self, factory) 
         # patches and reparent the state machine
         self.IDLE          = IdleState(self)
@@ -145,7 +145,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         self.CONNECTED     = ConnectedState(self)
         self.state         = self.IDLE
         # Copies addr
-        self.addr          = self.factory.addr
+        self.addr          = addr
         # Estimated bandwith in bytes/sec for PUBLISH PDUs
         self._bandwith     =  self.DEFAULT_BANDWITH
         self._factor       =  self.DEFAULT_FACTOR

@@ -27,15 +27,6 @@ or from GitHub:
 	cd twisted-mqtt
 	sudo python setup.py install
 
-Change Log
-----------
-
-* Version 0.2.1 was a major internal refactoring of the publish,  subscribe and pubsubs roles over 0.1.6.
-* Version 0.2.3 is backwards compatible with 0.2.1, with three enhancements:
-    - Persistent ***per-connection state*** (Pending Publish & Subscription ACKs). Verion 0.2.1 cannot be used with two simultaneous, different MQTT broker connections.
-    - Internal queue to hold PUBLISH requests beyond the window size.
-    - Adaptive timeouts depending on PUBLISH PDU size and a bandwith estimate. New protocol API function `setBandwith()`. This will avoid dupicate payloads using QoS 1 and 2.
-
 
 Credits
 -------

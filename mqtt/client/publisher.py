@@ -84,8 +84,8 @@ class MQTTProtocol(PubSubsMQTTProtocol):
     Publisher role MQTT Client Protocol
     '''
 
-    def __init__(self, factory):
-        PubSubsMQTTProtocol.__init__(self, factory)
+    def __init__(self, factory, addr):
+        PubSubsMQTTProtocol.__init__(self, factory, addr)
         # patches the state machine
         self.IDLE       = IdleState(self)
         self.CONNECTING = ConnectingState(self) 

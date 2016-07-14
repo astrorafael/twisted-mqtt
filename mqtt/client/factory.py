@@ -80,7 +80,7 @@ class MQTTFactory(ReconnectingClientFactory):
             from mqtt.client.pubsubs import MQTTProtocol
         else:
             raise ProfileValueError("profile value not supported" , self.profile)
-        self.addr = addr
+        
         v = self.queuePublishTx.get(addr, deque())
         log.debug("Current Publish Queue length = {N}", N=len(v))
         self.queuePublishTx[addr] = v
@@ -99,7 +99,7 @@ class MQTTFactory(ReconnectingClientFactory):
         v = self.windowUnsubscribe.get(addr, dict())
         log.debug("Current Unsubscribe (Subscriber) Window size = {N}", N=len(v))
         self.windowUnsubscribe[addr] = v
-        return MQTTProtocol(self)
+        return MQTTProtocol(self, addr)
 
 
     def clientConnectionLost(self, connector, reason):
