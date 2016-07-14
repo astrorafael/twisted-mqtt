@@ -305,6 +305,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         reply.msgId = response.msgId
         reply.interval = Interval()
         reply.deferred = request.deferred       # Transfer the deferred to PUBREL
+        reply.retries  = request.retries        # and the retry count
         reply.encode()
         self.factory.windowPubRelease[self.addr][reply.msgId] = reply
         self._retryRelease(reply, False)
@@ -428,7 +429,7 @@ class MQTTProtocol(MQTTBaseProtocol):
             request.msgId    = self.factory.makeId()
             request.deferred = defer.Deferred()
             request.interval = IntervalLinear(bandwith=self._bandwith)
-        
+            request.retries  = 0
         try:
             request.encode()
         except Exception as e:
@@ -572,7 +573,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle the absence of PUBACK / PUBREC 
         '''
-        log.error("{packet:7} (id={request.msgId:04x} qos={request.qos}) {timeout}, _retryPublish", packet="PUBREC/PUBACK", request=request, timeout="timeout")
+        request.retries += 1
+        log.error("{packet:7} (id={request.msgId:04x} qos={request.qos}) {timeout}, _retryPublish({request.retries})", packet="PUBREC/PUBACK", request=request, timeout="timeout")
         self._retryPublish(request, dup=True)
 
     # --------------------------------------------------------------------------
