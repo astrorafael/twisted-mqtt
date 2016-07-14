@@ -1,3 +1,4 @@
+sftp-config.json
 *.egg-info/
 build
 dist
