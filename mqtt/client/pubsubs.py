@@ -551,9 +551,9 @@ class MQTTProtocol(MQTTBaseProtocol):
         if request.interval:    # Handle timeouts for QoS 1 and 2
             request.alarm = self.callLater(request.interval(len(request.encoded)), self._publishError, request)
         if request.msgId is None:
-            log.debug("==> {packet:7} (id={request.msgId} qos={request.qos} dup={dup} topic={request.topic})", packet="PUBLISH", request=request, dup=dup)
+            log.debug("==> {packet:7} (id={request.msgId} qos={request.qos} dup={dup} retain={request.retain} topic={request.topic})", packet="PUBLISH", request=request, dup=dup)
         else:
-            log.debug("==> {packet:7} (id={request.msgId:04x} qos={request.qos} dup={dup} topic={request.topic})", packet="PUBLISH", request=request, dup=dup)
+            log.debug("==> {packet:7} (id={request.msgId:04x} qos={request.qos} dup={dup} retain={request.retain} topic={request.topic})", packet="PUBLISH", request=request, dup=dup)
         self.transport.write(str(request.encoded) if PY2 else bytes(request.encoded))
 
     # --------------------------------------------------------------------------
