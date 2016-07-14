@@ -524,7 +524,7 @@ class PUBLISH(object):
             varHeader.extend(encodeString(self.topic)) # topic name
             varHeader.extend(encode16Int(self.msgId))  # msgId should not be None
         else:
-            header[0] = 0x30
+            header[0] = 0x30 | self.retain
             varHeader.extend(encodeString(self.topic)) # topic name
         if isinstance(self.payload, bytearray):
             payload.extend(self.payload)

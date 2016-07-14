@@ -26,4 +26,5 @@ Backwards compatible with 0.2.1, with three enhancements:
 0.2.4
 =====
 Internal protocol constructor refactoring and document typo fixes.
+Fixed bug retain flag not really set if QoS = 0
 
