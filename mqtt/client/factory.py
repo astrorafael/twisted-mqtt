@@ -92,7 +92,8 @@ class MQTTFactory(ReconnectingClientFactory):
         self.windowSubscribe[addr] = v
         v = self.windowUnsubscribe.get(addr, dict())
         self.windowUnsubscribe[addr] = v
-        return MQTTProtocol(self, addr)
+	self.protocol = MQTTProtocol(self, addr)
+        return protocol
 
 
     def clientConnectionLost(self, connector, reason):
