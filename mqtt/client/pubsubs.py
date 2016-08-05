@@ -151,7 +151,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         self._factor       =  self.DEFAULT_FACTOR
         # additional, per-connection subscriber state
         self._onPublish   = None
-        
+	# a callback for when .connect() is done
+	self._onMqttConnectionMade = None  
       
        
     # -----------------------------
@@ -356,6 +357,8 @@ class MQTTProtocol(MQTTBaseProtocol):
             self._purgeSession()
         else:
             self._syncSession()
+        if self._onMqttConnectionMade:
+            self._onMqttConnectionMade()
 
     # ---------------------------
     # State Machine API callbacks
