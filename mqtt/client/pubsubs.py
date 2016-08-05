@@ -117,8 +117,8 @@ class ConnectedState(BaseConnectedState):
         self.protocol.handlePUBREC(response)
 
     # QoS=2 packets forwarded to subscriber
-    def handlePUBREL(self, dup, response):
-        self.protocol.handlePUBREL(dup, response)
+    def handlePUBREL(self, response):
+        self.protocol.handlePUBREL(response)
 
     # QoS=2 packets forwarded to publisher
     def handlePUBCOMP(self, response):
