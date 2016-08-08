@@ -161,9 +161,9 @@ class MQTTProtocol(MQTTBaseProtocol):
   
     def setBandwith(self, bandwith, factor=2):
         if bandwith <= 0:
-            raise VauleError("Bandwith should be a positive number")
+            raise ValueError("Bandwith should be a positive number")
         if factor <= 0:
-            raise VauleError("Bandwith should be a positive number")
+            raise ValueError("Bandwith should be a positive number")
         self._bandwith = bandwith
         self._factor   = factor
 
@@ -592,7 +592,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle the absence of PUBCOMP 
         '''
-        log.error("{packet:7} (id={request.msgId:04x} qos={request.qos}) {timeout}, _retryPublish", packet="PUBCOMP", request=request, timeout="timeout")
+        log.error("{packet:7} (id={request.msgId:04x}) {timeout}, _retryPublish", packet="PUBCOMP", timeout="timeout")
         self._retryRelease(reply, dup=True)
 
     # --------------------------------------------------------------------------
