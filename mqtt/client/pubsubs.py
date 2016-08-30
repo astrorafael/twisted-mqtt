@@ -214,11 +214,16 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle SUBACK control packet received.
         '''
-        log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="SUBACK",  response=response)
-        request = self.factory.windowSubscribe[self.addr][response.msgId]
-        del self.factory.windowSubscribe[self.addr][response.msgId]
-        request.alarm.cancel()
-        request.deferred.callback(response.granted)
+        try:
+            request = self.factory.windowSubscribe[self.addr][response.msgId]
+        except KeyError as e:
+            log.debug("<== {packet:7} (id={response.msgId:04x}) already handled" , packet="SUBACK",  response=response)
+        else:    
+            log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="SUBACK",  response=response)
+            request = self.factory.windowSubscribe[self.addr][response.msgId]
+            del self.factory.windowSubscribe[self.addr][response.msgId]
+            request.alarm.cancel()
+            request.deferred.callback(response.granted)
        
     # --------------------------------------------------------------------------
 
@@ -226,11 +231,16 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle UNSUBACK control packet received.
         '''
-        log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="UNSUBACK",  response=response)
-        request = self.factory.windowUnsubscribe[self.addr][response.msgId]
-        del self.factory.windowUnsubscribe[self.addr][response.msgId]
-        request.alarm.cancel()
-        request.deferred.callback(response.msgId)
+        try:
+            request = self.factory.windowUnsubscribe[self.addr][response.msgId]
+        except KeyError as e:
+            log.debug("<== {packet:7} (id={response.msgId:04x}) already handled" , packet="UNSUBACK",  response=response)
+        else:
+            log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="UNSUBACK",  response=response)
+            request = self.factory.windowUnsubscribe[self.addr][response.msgId]
+            del self.factory.windowUnsubscribe[self.addr][response.msgId]
+            request.alarm.cancel()
+            request.deferred.callback(response.msgId)
 
     # --------------------------------------------------------------------------
 
