@@ -272,15 +272,20 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle PUBREL control packet received.
         '''
-        log.debug("==> {packet:7}(id={response.msgId:04x} dup={response.dup})" , packet="PUBREL", response=response)
-        msg = self.factory.windowPubRx[self.addr][response.msgId]
-        del self.factory.windowPubRx[self.addr][response.msgId]
-        self._deliver(msg)
-        reply = PUBCOMP()
-        reply.msgId = response.msgId
-        reply.encode()
-        log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="PUBCOMP", response=response)
-        self.transport.write(reply.encode())
+        try:
+            msg = self.factory.windowPubRx[self.addr][response.msgId]
+        except KeyError as e:
+            log.debug("==> {packet:7}(id={response.msgId:04x} dup={response.dup}) already handled" , packet="PUBREL", response=response)
+        else:
+            log.debug("==> {packet:7}(id={response.msgId:04x} dup={response.dup})" , packet="PUBREL", response=response)
+            del self.factory.windowPubRx[self.addr][response.msgId]
+            self._deliver(msg)
+            reply = PUBCOMP()
+            reply.msgId = response.msgId
+            reply.encode()
+            log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="PUBCOMP", response=response)
+            self.transport.write(reply.encode())
+
 
     # --------------------------------------------------------------------------
 
