@@ -1,8 +1,8 @@
 import sys
 
 from twisted.internet import reactor
-from twisted.application.internet import ClientService
 from twisted.internet.endpoints   import clientFromString
+from twisted.application.internet import ClientService, backoffPolicy
 from twisted.logger   import (
     Logger, LogLevel, globalLogBeginner, textFileLogObserver, 
     FilteringLogObserver, LogLevelFilterPredicate)
@@ -49,6 +49,9 @@ def setLogLevel(namespace=None, levelStr='info'):
 
 class MyService(ClientService):
 
+    def __init(self, endpoint, factory):
+        ClientService.__init__(self, endpoint, factory,  retryPolicy=backoffPolicy())
+
     def gotProtocol(self, p):
         self.protocol = p
         d = p.connect("TwistedMQTT-subs", keepalive=0)
@@ -65,7 +68,7 @@ class MyService(ClientService):
         d.addCallback(self.grantedQoS)
         d = self.protocol.subscribe("foo/bar/baz3", 2 )
         d.addCallback(self.grantedQoS)
-        self.protocol.setPublishHandler(self.onPublish)
+        self.protocol.onPublish = self.onPublish
 
     def onPublish(self, topic, payload, qos, dup, retain, msgId):
        log.debug("msg={payload}", payload=payload)

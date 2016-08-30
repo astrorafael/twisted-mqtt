@@ -1,7 +1,7 @@
 import sys
 
 from twisted.internet import reactor, task
-from twisted.application.internet import ClientService
+from twisted.application.internet import ClientService, backoffPolicy
 from twisted.internet.endpoints   import clientFromString
 from twisted.logger   import (
     Logger, LogLevel, globalLogBeginner, textFileLogObserver, 
@@ -49,6 +49,9 @@ def setLogLevel(namespace=None, levelStr='info'):
     logLevelFilterPredicate.setLogLevelForNamespace(namespace=namespace, level=level)
 
 class MyService(ClientService):
+
+    def __init(self, endpoint, factory):
+        ClientService.__init__(self, endpoint, factory,  retryPolicy=backoffPolicy())
 
     def gotProtocol(self, p):
         self.protocol = p
