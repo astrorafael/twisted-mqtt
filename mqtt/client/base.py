@@ -123,11 +123,6 @@ class BaseState(object):
         return defer.fail(MQTTStateError("Unexpected unsubscribe() operation,", state))
 
 
-    def setPublishHandler(self, callback):
-        state = self.__class__.__name__
-        raise MQTTStateError("Unexpected setPublishHandler() operation,", state)
-
-
     def publish(self, request):
         state = self.__class__.__name__
         return defer.fail(MQTTStateError("Unexpected publish() operation", state))
@@ -301,7 +296,7 @@ class MQTTBaseProtocol(Protocol):
         self._pingReq.timer = None
         self._pingReq.alarm = None
         self._pingReq.pdu   = self._pingReq.encode()    # reuses the same PDU over and over again
-        self._onDisconnect  = None # callback to be invoked
+        self.onDisconnect  = None # callback to be invoked
 
  # ------------------------------------------------------------------------
 
@@ -526,14 +521,6 @@ class MQTTBaseProtocol(Protocol):
         if not (0 < n <= self.MAX_WINDOW):
             raise WindowValueError(n)
         self._window = min(n, self.MAX_WINDOW)
-
-    # ------------------------------------------------------------------------
-
-    def setDisconnectCallback(self, callback):
-        '''
-        API Entry Point
-        '''
-        self._onDisconnect = callback
 
     # ------------------------------------------------------------------------
 

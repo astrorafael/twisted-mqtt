@@ -60,9 +60,7 @@ class MQTTSessionCleared(Exception):
 # ---------------------------------------------
 
 class IdleState(BaseIdleState):
-
-    def setPublishHandler(self, callback):
-        self.protocol.doSetPublishHandler(callback)
+    pass
 
 
 # --------------------------------------------------
@@ -78,9 +76,6 @@ class ConnectingState(BaseConnectingState):
     def publish(self, request):
         return self.protocol.doPublish(request)
 
-    def setPublishHandler(self, callback):
-        self.protocol.doSetPublishHandler(callback)
-
 # ---------------------------------
 # MQTT Client Connected State Class
 # ---------------------------------
@@ -95,9 +90,6 @@ class ConnectedState(BaseConnectedState):
 
     def unsubscribe(self, request):
         return self.protocol.doUnsubscribe(request)
-
-    def setPublishHandler(self, callback):
-        self.protocol.doSetPublishHandler(callback)
     
     def handleSUBACK(self, response):
         self.protocol.handleSUBACK(response)
@@ -150,9 +142,9 @@ class MQTTProtocol(MQTTBaseProtocol):
         self._bandwith     =  self.DEFAULT_BANDWITH
         self._factor       =  self.DEFAULT_FACTOR
         # additional, per-connection subscriber state
-        self._onPublish   = None
-	# a callback for when .connect() is done
-	self._onMqttConnectionMade = None  
+        self.onPublish   = None
+        # a callback  when CONNACK packet is received
+        self.onMqttConnectionMade = None  
       
        
     # -----------------------------
@@ -163,7 +155,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         if bandwith <= 0:
             raise ValueError("Bandwith should be a positive number")
         if factor <= 0:
-            raise ValueError("Bandwith should be a positive number")
+            raise ValueError("Factor should be a positive number")
         self._bandwith = bandwith
         self._factor   = factor
 
@@ -277,7 +269,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         reply = PUBCOMP()
         reply.msgId = response.msgId
         reply.encode()
-        log.debug("<== {packet:7} (id={response.msgId:04})" , packet="PUBCOMP", response=response)
+        log.debug("<== {packet:7} (id={response.msgId:04x})" , packet="PUBCOMP", response=response)
         self.transport.write(reply.encode())
 
     # --------------------------------------------------------------------------
@@ -340,8 +332,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         MQTTBaseProtocol.connectionLost(self, reason)
         disconnectAllowed1 = self._subs_connectionLost(reason)
         disconnectAllowed2 = self._pub_connectionLost(reason)
-        if disconnectAllowed1 and disconnectAllowed2 and self._onDisconnect:
-            self._onDisconnect(reason)
+        if disconnectAllowed1 and disconnectAllowed2 and self.onDisconnect:
+            self.onDisconnect(reason)
 
 
 
@@ -357,8 +349,8 @@ class MQTTProtocol(MQTTBaseProtocol):
             self._purgeSession()
         else:
             self._syncSession()
-        if self._onMqttConnectionMade:
-            self._onMqttConnectionMade()
+        if self.onMqttConnectionMade:
+            self.onMqttConnectionMade()
 
     # ---------------------------
     # State Machine API callbacks
@@ -414,7 +406,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Stores the publish callback
         '''
-        self._onPublish = callback
+        self.onPublish = callback
 
     # --------------------------------------------------------------------------
 
@@ -482,8 +474,8 @@ class MQTTProtocol(MQTTBaseProtocol):
 
     def _deliver(self, pdu):
         '''Deliver the message to the client if registered a callback'''
-        if self._onPublish:
-            self._onPublish(pdu.topic, pdu.payload, pdu.qos, pdu.dup, pdu.retain, pdu.msgId)
+        if self.onPublish:
+            self.onPublish(pdu.topic, pdu.payload, pdu.qos, pdu.dup, pdu.retain, pdu.msgId)
 
     # --------------------------------------------------------------------------
 

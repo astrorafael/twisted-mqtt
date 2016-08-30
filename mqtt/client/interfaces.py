@@ -105,26 +105,18 @@ class IMQTTClientControl(Interface):
         @return: Nothing.
         '''
 
-    def setDisconnectCallback(callback):
-        '''
-        Abstract
-        ========
+    onDisconnection = Attribute("""
+        @type onDisconnection: C{function or bounded method}
+        @ivar onDisconnection: handler that will be invoked  if the Protocol loses the connection and no pending deferred remains 
+        to invoke its errbacks. This is the only way for clients to be notified of such situation.
+    """)
 
-        Set a disconnect callback handler.
+    onMqttConnectionMade = Attribute("""
+        @type onMqttConnectionMade: C{function or bounded method}
+        @ivar onMqttConnectionMade: handler that will be invoked before the deferreds for special cases
+        (to be yet confirmed) before the connection deferred is fired.
+    """)
 
-        Description
-        ===========
-
-        This operation wil install a dicoonnect callback that will be invoked 
-        if the Protocol loses the connection and no pending deferred remains 
-        to invoke its errbacks. This is the only way for clients to be notified 
-        of such situation. 
-
-        Signature
-        =========
-
-        @return: a Deferred with a True value.
-        '''
 
 
     def setTimeout(timeout):
@@ -233,25 +225,12 @@ class IMQTTSubscriber(Interface):
             The callbacks will be invoked with the msgId as parameter.
         '''
 
-    def setPublishHandler(callback):
-        '''
-        Abstract
-        =======
 
-        Set Publish callback. 
-
-        Description
-        ===========
-
-        Register a callback that will be called to be called 
-        whenever a PUBLISH message arrive.
-
-        Signature
-        =========
-
-        @param callback: a callable object that must receive the following
-        parameters (topic, payload, qos, dup, retain, msgId).
-        '''
+    onPublish = Attribute("""
+        @type onPublish: C{function or bounded method}
+        @ivar onPublish: handler that will be invoked whenever a PUBLISH message arrive.
+        with parameters (topic, payload, qos, dup, retain, msgId).
+    """)
 
     
 

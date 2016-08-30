@@ -56,9 +56,6 @@ class ConnectedState(BaseConnectedState):
 
     def unsubscribe(self, request):
         return self.protocol.doUnsubscribe(request)
-
-    def setPublishHandler(self, callback):
-        self.protocol.doSetPublishHandler(callback)
     
     def handleSUBACK(self, response):
         self.protocol.handleSUBACK(response)
