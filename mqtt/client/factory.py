@@ -92,8 +92,10 @@ class MQTTFactory(ReconnectingClientFactory):
         self.windowSubscribe[addr] = v
         v = self.windowUnsubscribe.get(addr, dict())
         self.windowUnsubscribe[addr] = v
-	self.protocol = MQTTProtocol(self, addr)
-        return protocol
+        # Keeps a persistent reference to the last protocol built
+        # This is ok *only* when connecting to a single broker. 
+        self.protocol = MQTTProtocol(self, addr)
+        return self.protocol
 
 
     def clientConnectionLost(self, connector, reason):
