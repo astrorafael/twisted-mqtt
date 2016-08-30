@@ -724,4 +724,4 @@ class MQTTProtocol(MQTTBaseProtocol):
 
         return not (pendingDeferred and self._cleanStart)
 
-__all__ = [MQTTProtocol]
+__all__ = [ "MQTTProtocol" ]

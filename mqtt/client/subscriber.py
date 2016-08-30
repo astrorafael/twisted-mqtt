@@ -86,4 +86,4 @@ class MQTTProtocol(PubSubsMQTTProtocol):
         self.CONNECTED = ConnectedState(self)
         
 
-__all__ = [MQTTProtocol]
+__all__ = [ "MQTTProtocol" ]

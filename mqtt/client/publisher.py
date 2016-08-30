@@ -93,4 +93,4 @@ class MQTTProtocol(PubSubsMQTTProtocol):
         self.state      = self.IDLE
 
 
-__all__ = [MQTTProtocol]
+__all__ = [ "MQTTProtocol" ]
