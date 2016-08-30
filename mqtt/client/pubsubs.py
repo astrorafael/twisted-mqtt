@@ -314,18 +314,22 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle PUBREC control packet received (QoS=2).
         '''
         # so:  response.msgId == windowPublish[self.addr][0].msgId
-        log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBREC", response=response)
-        request = self.factory.windowPublish[self.addr][response.msgId]
-        request.alarm.cancel()
-        del self.factory.windowPublish[self.addr][response.msgId]
-        reply = PUBREL()
-        reply.msgId = response.msgId
-        reply.interval = Interval(initial=self._initialT)
-        reply.deferred = request.deferred       # Transfer the deferred to PUBREL
-        reply.retries  = request.retries        # and the retry count
-        reply.encode()
-        self.factory.windowPubRelease[self.addr][reply.msgId] = reply
-        self._retryRelease(reply, False)
+        try:
+            request = self.factory.windowPublish[self.addr][response.msgId]
+        except KeyError as e:
+            log.debug("<== {packet:7} (id={response.msgId:04x}) already handled", packet="PUBREC", response=response)
+        else:
+            log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBREC", response=response)
+            request.alarm.cancel()
+            del self.factory.windowPublish[self.addr][response.msgId]
+            reply = PUBREL()
+            reply.msgId = response.msgId
+            reply.interval = Interval(initial=self._initialT)
+            reply.deferred = request.deferred       # Transfer the deferred to PUBREL
+            reply.retries  = request.retries        # and the retry count
+            reply.encode()
+            self.factory.windowPubRelease[self.addr][reply.msgId] = reply
+            self._retryRelease(reply, False)
 
 
     # --------------------------------------------------------------------------
@@ -335,12 +339,16 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle PUBCOMP control packet received (QoS=2).
         '''
         # Same comment as PUBACK
-        log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBCOMP", response=response)
-        reply = self.factory.windowPubRelease[self.addr][response.msgId]
-        reply.alarm.cancel()
-        reply.deferred.callback(reply.msgId)
-        del self.factory.windowPubRelease[self.addr][reply.msgId]
-        self._refillPublish(dup=False)
+        try:
+            reply = self.factory.windowPubRelease[self.addr][response.msgId]
+        except KeyError as e:
+            log.debug("<== {packet:7} (id={response.msgId:04x}) already handled", packet="PUBCOMP", response=response)
+        else: 
+            log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBCOMP", response=response)
+            reply.alarm.cancel()
+            reply.deferred.callback(reply.msgId)
+            del self.factory.windowPubRelease[self.addr][reply.msgId]
+            self._refillPublish(dup=False)
 
 
     # --------------------------
