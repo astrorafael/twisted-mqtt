@@ -296,12 +296,16 @@ class MQTTProtocol(MQTTBaseProtocol):
         Handle PUBACK control packet received (QoS=1).
         '''
         # so:  response.msgId == windowPublish[self.addr][0].msgId
-        log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBACK", response=response)
-        request = self.factory.windowPublish[self.addr][response.msgId]
-        request.alarm.cancel()
-        request.deferred.callback(request.msgId)
-        del self.factory.windowPublish[self.addr][response.msgId]
-        self._refillPublish(dup=False)
+        try:
+             request = self.factory.windowPublish[self.addr][response.msgId]
+        except KeyError as e:
+            log.debug("<== {packet:7} (id={response.msgId:04x}) already handled", packet="PUBACK", response=response)
+        else:
+            log.debug("<== {packet:7} (id={response.msgId:04x})", packet="PUBACK", response=response)
+            request.alarm.cancel()
+            request.deferred.callback(request.msgId)
+            del self.factory.windowPublish[self.addr][response.msgId]
+            self._refillPublish(dup=False)
 
     # --------------------------------------------------------------------------
 
