@@ -117,8 +117,8 @@ class ConnectedState(BaseConnectedState):
         self.protocol.handlePUBREC(response)
 
     # QoS=2 packets forwarded to subscriber
-    def handlePUBREL(self, dup, response):
-        self.protocol.handlePUBREL(dup, response)
+    def handlePUBREL(self, response):
+        self.protocol.handlePUBREL(response)
 
     # QoS=2 packets forwarded to publisher
     def handlePUBCOMP(self, response):
@@ -151,7 +151,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         self._factor       =  self.DEFAULT_FACTOR
         # additional, per-connection subscriber state
         self._onPublish   = None
-        
+	# a callback for when .connect() is done
+	self._onMqttConnectionMade = None  
       
        
     # -----------------------------
@@ -160,9 +161,9 @@ class MQTTProtocol(MQTTBaseProtocol):
   
     def setBandwith(self, bandwith, factor=2):
         if bandwith <= 0:
-            raise VauleError("Bandwith should be a positive number")
+            raise ValueError("Bandwith should be a positive number")
         if factor <= 0:
-            raise VauleError("Bandwith should be a positive number")
+            raise ValueError("Bandwith should be a positive number")
         self._bandwith = bandwith
         self._factor   = factor
 
@@ -356,6 +357,8 @@ class MQTTProtocol(MQTTBaseProtocol):
             self._purgeSession()
         else:
             self._syncSession()
+        if self._onMqttConnectionMade:
+            self._onMqttConnectionMade()
 
     # ---------------------------
     # State Machine API callbacks
@@ -589,7 +592,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         '''
         Handle the absence of PUBCOMP 
         '''
-        log.error("{packet:7} (id={request.msgId:04x} qos={request.qos}) {timeout}, _retryPublish", packet="PUBCOMP", request=request, timeout="timeout")
+        log.error("{packet:7} (id={request.msgId:04x}) {timeout}, _retryPublish", packet="PUBCOMP", timeout="timeout")
         self._retryRelease(reply, dup=True)
 
     # --------------------------------------------------------------------------
