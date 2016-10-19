@@ -28,7 +28,7 @@ Backwards compatible with 0.2.1, with three enhancements:
 Internal protocol constructor refactoring and document typo fixes.
 Fixed bug retain flag not really set if QoS = 0
 
-0.2.5
+0.3.0
 =====
 Incompatible API version. No mor settters for callback handlers. 
 Now callbacks are attributes.
