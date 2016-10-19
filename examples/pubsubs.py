@@ -54,7 +54,7 @@ class MyService(ClientService):
 
     def gotProtocol(self, p):
         self.protocol = p
-        d = p.connect("TwistedMQTT-pubsubs", keepalive=0)
+        d = p.connect("TwistedMQTT-pubsubs", keepalive=60)
         d.addCallback(self.subscribe)
         d.addCallback(self.prepareToPublish)
 

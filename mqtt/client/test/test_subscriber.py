@@ -201,7 +201,7 @@ class TestMQTTSubscriber1(unittest.TestCase):
             self.qos     = qos
             self.retain  = retain
             self.msgId   = msgId 
-        self.protocol.setPublishHandler(onPublish)
+        self.protocol.onPublish = onPublish
         pub =PUBLISH()
         pub.qos     = 0
         pub.dup     = False
@@ -224,7 +224,7 @@ class TestMQTTSubscriber1(unittest.TestCase):
             self.retain  = retain
             self.msgId   = msgId 
             self.dup     = dup
-        self.protocol.setPublishHandler(onPublish)
+        self.protocol.onPublish = onPublish
         pub =PUBLISH()
         pub.qos     = 1
         pub.dup     = False
@@ -251,7 +251,7 @@ class TestMQTTSubscriber1(unittest.TestCase):
             self.retain  = retain
             self.msgId   = msgId 
             self.dup     = dup
-        self.protocol.setPublishHandler(onPublish)
+        self.protocol.onPublish = onPublish
         pub =PUBLISH()
         pub.qos     = 2
         pub.dup     = False
@@ -318,21 +318,21 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
     def test_disconnect_1(self):
         '''Just connect and lose the transport'''
         self._connect()
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         self.transport.loseConnection()
         self.assertEqual(self.disconnected, True)
 
     def test_disconnect_2(self):
         '''connect and disconnect'''
         self._connect()
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         self.protocol.disconnect()
         self.assertEqual(self.disconnected, True)
 
     def test_disconnect_3(self):
         '''connect, generate a deferred and lose the transport'''
         self._connect()
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.transport.loseConnection()
@@ -342,7 +342,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
     def test_disconnect_4(self):
         '''connect, generate a deferred and disconnect'''
         self._connect()
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.protocol.disconnect()
@@ -354,7 +354,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         enerate a deferred that will not errback 
         and then disconnect'''
         self._connect(cleanStart=False)
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.protocol.disconnect()
@@ -366,7 +366,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         generate a deferred that will not errback yet, 
         then rebuilds protocol'''
         self._connect(cleanStart=False)
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self._serverDown()
         self._rebuild()
@@ -437,7 +437,7 @@ class TestMQTTSubscriber2(unittest.TestCase):
     def test_subscribe_setPubishHandler1(self):
         def onPublish(topic, payload, qos, dup, retain, msgId):
             self.called  = True
-        self.protocol.setPublishHandler(onPublish)
+        self.protocol.onPublish = onPublish
         self._connect()
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
@@ -451,7 +451,7 @@ class TestMQTTSubscriber2(unittest.TestCase):
         def onPublish(topic, payload, qos, dup, retain, msgId):
             self.called  = True
         self._connect()
-        self.protocol.setPublishHandler(onPublish)
+        self.protocol.onPublish = onPublish
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         ack = SUBACK()

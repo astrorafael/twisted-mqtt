@@ -296,7 +296,7 @@ class MQTTBaseProtocol(Protocol):
         self._pingReq.timer = None
         self._pingReq.alarm = None
         self._pingReq.pdu   = self._pingReq.encode()    # reuses the same PDU over and over again
-        self.onDisconnect  = None # callback to be invoked
+        self.onDisconnection = None # callback to be invoked
 
  # ------------------------------------------------------------------------
 

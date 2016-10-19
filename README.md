@@ -55,7 +55,7 @@ This library builds `MQTTProtocol` objects and is designed to be *used rather th
 import sys
 
 from twisted.internet import reactor, task
-from twisted.application.internet import ClientService
+from twisted.application.internet import ClientService, backoffPolicy
 from twisted.internet.endpoints   import clientFromString
 from twisted.logger   import (
     Logger, LogLevel, globalLogBeginner, textFileLogObserver, 
@@ -104,16 +104,19 @@ def setLogLevel(namespace=None, levelStr='info'):
 
 class MyService(ClientService):
 
+    def __init(self, endpoint, factory):
+        ClientService.__init__(self, endpoint, factory,  retryPolicy=backoffPolicy())
+
     def gotProtocol(self, p):
         self.protocol = p
-        d = p.connect("TwistedMQTT-pub", keepalive=0, version=v31)
+        d = p.connect("TwistedMQTT-pub", keepalive=60, version=v31)
         d.addCallbacks(self.prepareToPublish, self.printError)
         
     def prepareToPublish(self, *args):
         # We are issuing 3 publish in a row
         # if order matters, then set window size to 1
         # Publish requests beyond window size are enqueued
-        self.protocol.setWindowSize(3) 
+        self.protocol.setWindowSize(3)  
         self.task = task.LoopingCall(self.publish)
         self.task.start(5.0)
 
@@ -140,7 +143,6 @@ if __name__ == '__main__':
     serv.whenConnected().addCallback(serv.gotProtocol)
     serv.startService()
     reactor.run()
-
 ```
 
 ### Subscriber Example ###
@@ -149,8 +151,8 @@ if __name__ == '__main__':
 import sys
 
 from twisted.internet import reactor
-from twisted.application.internet import ClientService
 from twisted.internet.endpoints   import clientFromString
+from twisted.application.internet import ClientService, backoffPolicy
 from twisted.logger   import (
     Logger, LogLevel, globalLogBeginner, textFileLogObserver, 
     FilteringLogObserver, LogLevelFilterPredicate)
@@ -197,9 +199,12 @@ def setLogLevel(namespace=None, levelStr='info'):
 
 class MyService(ClientService):
 
+    def __init(self, endpoint, factory):
+        ClientService.__init__(self, endpoint, factory,  retryPolicy=backoffPolicy())
+
     def gotProtocol(self, p):
         self.protocol = p
-        d = p.connect("TwistedMQTT-subs", keepalive=0)
+        d = p.connect("TwistedMQTT-subs", keepalive=60)
         d.addCallback(self.subscribe)
         # We are issuing 3 subscriptions in a row
         # Subscription requests beyond window size 
@@ -213,7 +218,7 @@ class MyService(ClientService):
         d.addCallback(self.grantedQoS)
         d = self.protocol.subscribe("foo/bar/baz3", 2 )
         d.addCallback(self.grantedQoS)
-        self.protocol.setPublishHandler(self.onPublish)
+        self.protocol.onPublish = self.onPublish
 
     def onPublish(self, topic, payload, qos, dup, retain, msgId):
        log.debug("msg={payload}", payload=payload)
@@ -244,7 +249,7 @@ if __name__ == '__main__':
 import sys
 
 from twisted.internet import reactor, task
-from twisted.application.internet import ClientService
+from twisted.application.internet import ClientService, backoffPolicy
 from twisted.internet.endpoints   import clientFromString
 from twisted.logger   import (
     Logger, LogLevel, globalLogBeginner, textFileLogObserver, 
@@ -292,15 +297,18 @@ def setLogLevel(namespace=None, levelStr='info'):
 
 class MyService(ClientService):
 
+    def __init(self, endpoint, factory):
+        ClientService.__init__(self, endpoint, factory,  retryPolicy=backoffPolicy())
+
     def gotProtocol(self, p):
         self.protocol = p
-        d = p.connect("TwistedMQTT-pubsubs", keepalive=0)
+        d = p.connect("TwistedMQTT-pubsubs", keepalive=60)
         d.addCallback(self.subscribe)
         d.addCallback(self.prepareToPublish)
 
     def subscribe(self, *args):
         d = self.protocol.subscribe("foo/bar/baz", 0 )
-        self.protocol.setPublishHandler(self.onPublish)
+        self.protocol.onPublish = self.onPublish
 
     def onPublish(self, topic, payload, qos, dup, retain, msgId):
        log.debug("msg={payload}", payload=payload)
@@ -368,6 +376,7 @@ energy and knowledge to do so.
 
 Some areas in which this can be improved:
 
+* Bug fixing 
 * Include a thorough test battery.
 * Improve documentation.
 * etc.

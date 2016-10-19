@@ -359,8 +359,8 @@ class MQTTProtocol(MQTTBaseProtocol):
         MQTTBaseProtocol.connectionLost(self, reason)
         disconnectAllowed1 = self._subs_connectionLost(reason)
         disconnectAllowed2 = self._pub_connectionLost(reason)
-        if disconnectAllowed1 and disconnectAllowed2 and self.onDisconnect:
-            self.onDisconnect(reason)
+        if disconnectAllowed1 and disconnectAllowed2 and self.onDisconnection:
+            self.onDisconnection(reason)
 
 
 

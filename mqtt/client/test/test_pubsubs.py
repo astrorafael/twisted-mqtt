@@ -83,7 +83,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
     def test_disconnect_1(self):
         '''Just connect and lose the transport'''
         self._connect()
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         self.transport.loseConnection()
         self.assertEqual(self.disconnected, 1)
         
@@ -91,7 +91,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
     def test_disconnect_2(self):
         '''connect and disconnect'''
         self._connect()
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         self.protocol.disconnect()
         self.assertEqual(self.disconnected, 1)
         
@@ -99,7 +99,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
     def test_disconnect_3(self):
         '''connect, generate a deferred and lose the transport'''
         self._connect()
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
         self.transport.clear()
         self.transport.loseConnection()
@@ -110,7 +110,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
     def test_disconnect_4(self):
         '''connect, generate a deferred and disconnect'''
         self._connect()
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
         self.transport.clear()
         self.protocol.disconnect()
@@ -121,7 +121,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
     def test_disconnect_5(self):
         '''connect with persistent session, generate a deferred and disconnect'''
         self._connect(cleanStart=False)
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
         self.transport.clear()
         self.protocol.disconnect()
@@ -132,7 +132,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
     def test_disconnect_6(self):
         '''connect with persistent session, generate a deferred , rebuilds protocol'''
         self._connect(cleanStart=False)
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
         self._serverDown()
         self._rebuild()
@@ -186,7 +186,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
     def test_disconnect_1(self):
         '''Just connect and lose the transport'''
         self._connect()
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         self.transport.loseConnection()
         self.assertEqual(self.disconnected, 1)
        
@@ -194,7 +194,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
     def test_disconnect_2(self):
         '''connect and disconnect'''
         self._connect()
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         self.protocol.disconnect()
         self.assertEqual(self.disconnected, 1)
        
@@ -202,7 +202,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
     def test_disconnect_3(self):
         '''connect, generate a deferred and lose the transport'''
         self._connect()
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.transport.loseConnection()
@@ -212,7 +212,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
     def test_disconnect_4(self):
         '''connect, generate a deferred and disconnect'''
         self._connect()
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.protocol.disconnect()
@@ -224,7 +224,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         enerate a deferred that will not errback 
         and then disconnect'''
         self._connect(cleanStart=False)
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.protocol.disconnect()
@@ -236,7 +236,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         generate a deferred that will not errback yet, 
         then rebuilds protocol'''
         self._connect(cleanStart=False)
-        self.protocol.setDisconnectCallback(self._disconnected)
+        self.protocol.onDisconnection = self._disconnected
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self._serverDown()
         self._rebuild()
