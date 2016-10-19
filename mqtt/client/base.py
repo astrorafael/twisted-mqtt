@@ -56,7 +56,7 @@ from random import randint
 # ----------------
 
 from zope.interface import implementer
-from twisted.internet.protocol import Protocol
+from twisted.internet.protocol import Protocol, connectionDone
 from twisted.internet import reactor, defer, task
 from twisted.logger   import Logger
 from twisted.python   import failure
@@ -645,13 +645,16 @@ class MQTTBaseProtocol(Protocol):
     # ------------------------------------------------------------------------
 
     def doPingRequest(self):
-        '''Performs the actual work of sending PINGREQ packets'''
+        '''
+        Performs the actual work of sending PINGREQ packets
+        '''
+        def doPingError():
+            log.debug("<MQTT PING Timeout>, closing connection")
+            self.transport.loseConnection()
+            self.connectionLost(connectionDone)
         log.debug("==> {packet:7}", packet="PINGREQ")
         self.transport.write(self._pingReq.pdu)
-        self._pingReq.alarm = self.callLater(
-            self._pingReq.keepalive, 
-            self.transport.loseConnection
-        )
+        self._pingReq.alarm = self.callLater(self._pingReq.keepalive, doPingError)
 
     # --------------
     # Helper methods
