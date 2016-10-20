@@ -461,6 +461,7 @@ class MQTTBaseProtocol(Protocol):
     
 
     def connectionLost(self, reason):
+        log.warn("--- Connection to MQTT Broker lost")
         if self._pingReq.timer:
             self._pingReq.timer.stop()
             self._pingReq.timer = None
@@ -649,9 +650,9 @@ class MQTTBaseProtocol(Protocol):
         Performs the actual work of sending PINGREQ packets
         '''
         def doPingError():
-            log.debug("<MQTT PING Timeout>, closing connection")
-            self.transport.loseConnection()
-            self.connectionLost(connectionDone)
+            log.warn("--- {packet:7} Timeout", packet="PINGREQ")
+            self.transport.abortConnection()
+            #self.connectionLost(connectionDone)
         log.debug("==> {packet:7}", packet="PINGREQ")
         self.transport.write(self._pingReq.pdu)
         self._pingReq.alarm = self.callLater(self._pingReq.keepalive, doPingError)
