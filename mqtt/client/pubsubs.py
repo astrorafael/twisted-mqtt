@@ -196,14 +196,6 @@ class MQTTProtocol(MQTTBaseProtocol):
         request.topics = topics
         return self.state.unsubscribe(request)
 
-    # --------------------------------------------------------------------------
-
-    def setPublishHandler(self, callback):
-        '''
-        API entry 
-        '''
-        self.state.setPublishHandler(callback)
-
 
     # ------------------------------------------
     # Southbound interface: Network entry points

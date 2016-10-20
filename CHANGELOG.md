@@ -33,3 +33,8 @@ Fixed bug retain flag not really set if QoS = 0
 Incompatible API version. No mor settters for callback handlers. 
 Now callbacks are attributes.
 Fixed missing key error bug.
+
+0.3.1
+=====
+Erased unneded setPublishHandler
+
