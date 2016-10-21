@@ -1,8 +1,10 @@
 import sys
 
+from twisted.internet.defer import inlineCallbacks, DeferredList
 from twisted.internet import reactor
 from twisted.internet.endpoints   import clientFromString
 from twisted.application.internet import ClientService, backoffPolicy
+
 from twisted.logger   import (
     Logger, LogLevel, globalLogBeginner, textFileLogObserver, 
     FilteringLogObserver, LogLevelFilterPredicate)
@@ -15,6 +17,8 @@ from mqtt.client.factory import MQTTFactory
 
 # Global object to control globally namespace logging
 logLevelFilterPredicate = LogLevelFilterPredicate(defaultLogLevel=LogLevel.info)
+
+BROKER = "tcp:test.mosquitto.org:1883"
 
 # -----------------
 # Utility Functions
@@ -52,29 +56,69 @@ class MyService(ClientService):
     def __init(self, endpoint, factory):
         ClientService.__init__(self, endpoint, factory,  retryPolicy=backoffPolicy())
 
-    def gotProtocol(self, p):
-        self.protocol = p
-        d = p.connect("TwistedMQTT-subs", keepalive=60)
-        d.addCallback(self.subscribe)
-        # We are issuing 3 subscriptions in a row
-        # Subscription requests beyond window size 
-        # invoke errback with MQTTWindowError exception
-        self.protocol.setWindowSize(3) 
+    def startService(self):
+        log.info("starting MQTT Client Service")
+        # invoke whenConnected() inherited method
+        self.whenConnected().addCallback(self.connectToBroker)
+        ClientService.startService(self)
 
-    def subscribe(self, *args):
-        d = self.protocol.subscribe("foo/bar/baz1", 2 )
-        d.addCallback(self.grantedQoS)
-        d = self.protocol.subscribe("foo/bar/baz2", 2 )
-        d.addCallback(self.grantedQoS)
-        d = self.protocol.subscribe("foo/bar/baz3", 2 )
-        d.addCallback(self.grantedQoS)
-        self.protocol.onPublish = self.onPublish
+    @inlineCallbacks
+    def connectToBroker(self, protocol):
+        '''
+        Connect to MQTT broker
+        '''
+        self.protocol                 = protocol
+        self.protocol.onPublish       = self.onPublish
+        self.protocol.onDisconnection = self.onDisconnection
+        self.protocol.setWindowSize(3) 
+        try:
+            yield self.protocol.connect("TwistedMQTT-subs", keepalive=60)
+            yield self.subscribe()
+        except Exception as e:
+            log.error("Connecting to {broker} raised {excp!s}", 
+               broker=BROKER, excp=e)
+        else:
+            log.info("Connected and subscribed to {broker}", broker=BROKER)
+
+
+    def subscribe(self):
+
+        def _logFailure(failure):
+            log.debug("reported {message}", message=failure.getErrorMessage())
+            return failure
+
+        def _logGrantedQoS(value):
+            log.debug("response {value!r}", value=value)
+            return True
+
+        def _logAll(*args):
+            log.debug("all subscriptions complete args={args!r}",args=args)
+
+        d1 = self.protocol.subscribe("foo/bar/baz1", 2 )
+        d1.addCallbacks(_logGrantedQoS, _logFailure)
+
+        d2 = self.protocol.subscribe("foo/bar/baz2", 2 )
+        d2.addCallbacks(_logGrantedQoS, _logFailure)
+
+        d3 = self.protocol.subscribe("foo/bar/baz3", 2 )
+        d3.addCallbacks(_logGrantedQoS, _logFailure)
+
+        dlist = DeferredList([d1,d2,d3], consumeErrors=True)
+        dlist.addCallback(_logAll)
+        return dlist
+
 
     def onPublish(self, topic, payload, qos, dup, retain, msgId):
        log.debug("msg={payload}", payload=payload)
 
-    def grantedQoS(self, *args):
-        log.debug("args={args!r}", args=args)
+
+    def onDisconnection(self, reason):
+        '''
+        get notfied of disconnections
+        and get a deferred for a new protocol object (next retry)
+        '''
+        log.debug(" >< Connection was lost ! ><, reason={r}", r=reason)
+        self.whenConnected().addCallback(self.connectToBroker)
 
 
 if __name__ == '__main__':
@@ -84,11 +128,9 @@ if __name__ == '__main__':
     setLogLevel(namespace='mqtt',     levelStr='debug')
     setLogLevel(namespace='__main__', levelStr='debug')
 
-
     factory    = MQTTFactory(profile=MQTTFactory.SUBSCRIBER)
-    myEndpoint = clientFromString(reactor, "tcp:test.mosquitto.org:1883")
+    myEndpoint = clientFromString(reactor, BROKER)
     serv       = MyService(myEndpoint, factory)
-    serv.whenConnected().addCallback(serv.gotProtocol)
     serv.startService()
     reactor.run()
     

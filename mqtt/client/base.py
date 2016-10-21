@@ -461,7 +461,7 @@ class MQTTBaseProtocol(Protocol):
     
 
     def connectionLost(self, reason):
-        log.warn("--- Connection to MQTT Broker lost")
+        log.debug("--- Connection to MQTT Broker lost")
         if self._pingReq.timer:
             self._pingReq.timer.stop()
             self._pingReq.timer = None
@@ -625,7 +625,7 @@ class MQTTBaseProtocol(Protocol):
         def connectError():
             request.deferred.errback(MQTTTimeoutError("CONNACK"))
             request.deferred = None
-            self.transport.loseConnection()            
+            self.transport.abortConnection()            
 
         try:
             self._checkConnect(request)
