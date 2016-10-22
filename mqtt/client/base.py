@@ -468,6 +468,9 @@ class MQTTBaseProtocol(Protocol):
         if self._pingReq.alarm:
             self._pingReq.alarm.cancel()
             self._pingReq.alarm = None
+        self.doConnectionLost(reason)
+        if self.onDisconnection:
+            self.onDisconnection(reason)
         self.state = self.IDLE
         
 
@@ -655,6 +658,14 @@ class MQTTBaseProtocol(Protocol):
         log.debug("==> {packet:7}", packet="PINGREQ")
         self.transport.write(self._pingReq.pdu)
         self._pingReq.alarm = self.callLater(self._pingReq.keepalive, doPingError)
+
+    # ------------------------------------------------------------------------
+
+    def doConnectionLost(self, reason):
+        '''
+        To bse subclassed
+        '''
+        pass
 
     # --------------
     # Helper methods

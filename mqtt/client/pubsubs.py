@@ -343,19 +343,6 @@ class MQTTProtocol(MQTTBaseProtocol):
             self._refillPublish(dup=False)
 
 
-    # --------------------------
-    # Twisted Protocol Interface
-    # --------------------------
-
-    def connectionLost(self, reason):
-        MQTTBaseProtocol.connectionLost(self, reason)
-        disconnectAllowed1 = self._subs_connectionLost(reason)
-        disconnectAllowed2 = self._pub_connectionLost(reason)
-        if disconnectAllowed1 and disconnectAllowed2 and self.onDisconnection:
-            self.onDisconnection(reason)
-
-
-
     # ---------------------------
     # Protocol API for subclasses
     # ---------------------------
@@ -649,23 +636,25 @@ class MQTTProtocol(MQTTBaseProtocol):
     # Helper methods (publisher/subscriber)
     # -------------------------------------
 
-    def _subs_connectionLost(self, reason):
+    def doConnectionLost(self, reason):
         '''
-        Subscriber connection lost handling.
-        Returns True if we can invoke the disconnect callback
+        Additional connection lost clean up.
         '''
        
-        # Find out pending deferreds
-        if len(self.factory.windowSubscribe[self.addr]) or len(self.factory.windowUnsubscribe[self.addr]):
-            pendingDeferred = True
-        else:
-            pendingDeferred = False
         # Cancel Alarms first
         for _, request in self.factory.windowSubscribe[self.addr].items():
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
         for _, request in self.factory.windowUnsubscribe[self.addr].items():
+            if request.alarm is not None:
+                request.alarm.cancel()
+                request.alarm = None
+        for _, request in self.factory.windowPublish[self.addr].items():
+            if request.alarm is not None:
+                request.alarm.cancel()
+                request.alarm = None
+        for _, request in self.factory.windowPubRelease[self.addr].items():
             if request.alarm is not None:
                 request.alarm.cancel()
                 request.alarm = None
@@ -679,41 +668,13 @@ class MQTTProtocol(MQTTBaseProtocol):
                 request = self.factory.windowUnsubscribe[self.addr][k]
                 del self.factory.windowUnsubscribe[self.addr][k]
                 request.deferred.errback(reason)
-        return not pendingDeferred
-       
-
-
-    def _pub_connectionLost(self, reason):
-        '''
-        Publisher connection lost handling. 
-        Returns True if we can invoke the disconnect callback
-        '''
-         # Find out pending deferreds
-        if len(self.factory.windowPubRelease[self.addr]) or len(self.factory.windowPublish[self.addr]):
-            pendingDeferred = True
-        else:
-            pendingDeferred = False
-        # Cancel Alarms first
-        for _, request in self.factory.windowPublish[self.addr].items():
-            if request.alarm is not None:
-                request.alarm.cancel()
-                request.alarm = None
-        for _, request in self.factory.windowPubRelease[self.addr].items():
-            if request.alarm is not None:
-                request.alarm.cancel()
-                request.alarm = None
-        # Then, invoke errbacks if we do not persist state
-        if self._cleanStart:
             for k in self.factory.windowPubRelease[self.addr].keys():
                 request = self.factory.windowPubRelease[self.addr][k]
                 del self.factory.windowPubRelease[self.addr][k]
-                request.deferred.errback(reason)
-                
+                request.deferred.errback(reason)                
             for k in self.factory.windowPublish[self.addr].keys():
                 request = self.factory.windowPublish[self.addr][k]
                 del self.factory.windowPublish[self.addr][k]
                 request.deferred.errback(reason)   
-
-        return not (pendingDeferred and self._cleanStart)
 
 __all__ = [ "MQTTProtocol" ]
