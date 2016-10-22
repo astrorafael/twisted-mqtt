@@ -336,7 +336,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.transport.loseConnection()
-        self.assertEqual(self.disconnected, False)
+        self.assertEqual(self.disconnected, True)
         self.failureResultOf(d).trap(error.ConnectionDone)
 
     def test_disconnect_4(self):
@@ -346,7 +346,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.protocol.disconnect()
-        self.assertEqual(self.disconnected, False)
+        self.assertEqual(self.disconnected, True)
         self.failureResultOf(d).trap(error.ConnectionDone)
 
     def test_disconnect_5(self):
@@ -358,7 +358,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self.transport.clear()
         self.protocol.disconnect()
-        self.assertEqual(self.disconnected, False)
+        self.assertEqual(self.disconnected, True)
         self.assertNoResult(d)
 
     def test_disconnect_6(self):
@@ -370,7 +370,7 @@ class TestMQTTSubscriberDisconnect(unittest.TestCase):
         d = self.protocol.subscribe("foo/bar/baz1", 2 )
         self._serverDown()
         self._rebuild()
-        self.assertEqual(self.disconnected, False)
+        self.assertEqual(self.disconnected, True)
         self.assertNoResult(d)
 
 

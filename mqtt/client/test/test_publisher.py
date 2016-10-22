@@ -386,7 +386,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
         self.transport.clear()
         self.transport.loseConnection()
-        self.assertEqual(self.disconnected, False)
+        self.assertEqual(self.disconnected, True)
         self.failureResultOf(d).trap(error.ConnectionDone)
 
     def test_disconnect_4(self):
@@ -396,7 +396,7 @@ class TestMQTTPublisherDisconnect(unittest.TestCase):
         d = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
         self.transport.clear()
         self.protocol.disconnect()
-        self.assertEqual(self.disconnected, False)
+        self.assertEqual(self.disconnected, True)
         self.failureResultOf(d).trap(error.ConnectionDone)
 
     def test_disconnect_5(self):
