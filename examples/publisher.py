@@ -1,6 +1,7 @@
 import sys
 
-from twisted.internet import reactor, task
+from twisted.internet             import reactor, task
+from twisted.internet.defer       import inlineCallbacks, DeferredList
 from twisted.application.internet import ClientService, backoffPolicy
 from twisted.internet.endpoints   import clientFromString
 from twisted.logger   import (
@@ -8,8 +9,6 @@ from twisted.logger   import (
     FilteringLogObserver, LogLevelFilterPredicate)
 
 from mqtt.client.factory import MQTTFactory
-from mqtt import v31
-
 
 # ----------------
 # Global variables
@@ -17,6 +16,8 @@ from mqtt import v31
 
 # Global object to control globally namespace logging
 logLevelFilterPredicate = LogLevelFilterPredicate(defaultLogLevel=LogLevel.info)
+
+BROKER = "tcp:test.mosquitto.org:1883"
 
 # -----------------
 # Utility Functions
@@ -48,33 +49,77 @@ def setLogLevel(namespace=None, levelStr='info'):
     level = LogLevel.levelWithName(levelStr)
     logLevelFilterPredicate.setLogLevelForNamespace(namespace=namespace, level=level)
 
+
+# -----------------------
+# MQTT Publishing Service
+# -----------------------
+
 class MyService(ClientService):
 
     def __init(self, endpoint, factory):
-        ClientService.__init__(self, endpoint, factory,  retryPolicy=backoffPolicy())
+        ClientService.__init__(self, endpoint, factory, retryPolicy=backoffPolicy())
 
-    def gotProtocol(self, p):
-        self.protocol = p
-        d = p.connect("TwistedMQTT-pub", keepalive=60, version=v31)
-        d.addCallbacks(self.prepareToPublish, self.printError)
-        
-    def prepareToPublish(self, *args):
+
+    def startService(self):
+        log.info("starting MQTT Client Publisher Service")
+        # invoke whenConnected() inherited method
+        self.whenConnected().addCallback(self.connectToBroker)
+        ClientService.startService(self)
+
+
+    @inlineCallbacks
+    def connectToBroker(self, protocol):
+        '''
+        Connect to MQTT broker
+        '''
+        self.protocol                 = protocol
+        self.protocol.onDisconnection = self.onDisconnection
         # We are issuing 3 publish in a row
         # if order matters, then set window size to 1
         # Publish requests beyond window size are enqueued
-        self.protocol.setWindowSize(3)  
+        self.protocol.setWindowSize(3) 
         self.task = task.LoopingCall(self.publish)
         self.task.start(5.0)
+        try:
+            yield self.protocol.connect("TwistedMQTT-pub", keepalive=60)
+        except Exception as e:
+            log.error("Connecting to {broker} raised {excp!s}", 
+               broker=BROKER, excp=e)
+        else:
+            log.info("Connected and subscribed to {broker}", broker=BROKER)
+
+
+    def onDisconnection(self, reason):
+        '''
+        get notfied of disconnections
+        and get a deferred for a new protocol object (next retry)
+        '''
+        log.debug(" >< Connection was lost ! ><, reason={r}", r=reason)
+        self.whenConnected().addCallback(self.connectToBroker)
+
 
     def publish(self):
-        d = self.protocol.publish(topic="foo/bar/baz1", qos=0, message="hello world 0")
-        d = self.protocol.publish(topic="foo/bar/baz2", qos=1, message="hello world 1")
-        d = self.protocol.publish(topic="foo/bar/baz3", qos=2, message="hello world 2")
-        d.addErrback(self.printError)
 
-    def printError(self, *args):
-        log.debug("args={args!s}", args=args)
-        reactor.stop()
+
+        def _logFailure(failure):
+            log.debug("reported {message}", message=failure.getErrorMessage())
+            return failure
+
+        def _logAll(*args):
+            log.debug("all publihing complete args={args!r}",args=args)
+
+        log.debug(" >< Starting one round of publishing >< ")
+        d1 = self.protocol.publish(topic="foo/bar/baz1", qos=0, message="hello world 0")
+        d1.addErrback(_logFailure)
+        d2 = self.protocol.publish(topic="foo/bar/baz2", qos=1, message="hello world 1")
+        d2.addErrback(_logFailure)
+        d3 = self.protocol.publish(topic="foo/bar/baz3", qos=2, message="hello world 2")
+        d3.addErrback(_logFailure)
+        dlist = DeferredList([d1,d2,d3], consumeErrors=True)
+        dlist.addCallback(_logAll)
+        return dlist
+
+
 
 if __name__ == '__main__':
     import sys
@@ -84,8 +129,7 @@ if __name__ == '__main__':
     setLogLevel(namespace='__main__', levelStr='debug')
 
     factory    = MQTTFactory(profile=MQTTFactory.PUBLISHER)
-    myEndpoint = clientFromString(reactor, "tcp:test.mosquitto.org:1883")
+    myEndpoint = clientFromString(reactor, BROKER)
     serv       = MyService(myEndpoint, factory)
-    serv.whenConnected().addCallback(serv.gotProtocol)
     serv.startService()
     reactor.run()

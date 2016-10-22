@@ -1,7 +1,7 @@
 import sys
 
-from twisted.internet.defer import inlineCallbacks, DeferredList
-from twisted.internet import reactor
+from twisted.internet.defer       import inlineCallbacks, DeferredList
+from twisted.internet             import reactor
 from twisted.internet.endpoints   import clientFromString
 from twisted.application.internet import ClientService, backoffPolicy
 
@@ -50,17 +50,23 @@ def setLogLevel(namespace=None, levelStr='info'):
     level = LogLevel.levelWithName(levelStr)
     logLevelFilterPredicate.setLogLevelForNamespace(namespace=namespace, level=level)
 
+# -----------------------
+# MQTT Subscriber Service
+# ------------------------
 
 class MyService(ClientService):
 
+
     def __init(self, endpoint, factory):
-        ClientService.__init__(self, endpoint, factory,  retryPolicy=backoffPolicy())
+        ClientService.__init__(self, endpoint, factory, retryPolicy=backoffPolicy())
+
 
     def startService(self):
-        log.info("starting MQTT Client Service")
+        log.info("starting MQTT Client Subscriber Service")
         # invoke whenConnected() inherited method
         self.whenConnected().addCallback(self.connectToBroker)
         ClientService.startService(self)
+
 
     @inlineCallbacks
     def connectToBroker(self, protocol):
@@ -109,7 +115,10 @@ class MyService(ClientService):
 
 
     def onPublish(self, topic, payload, qos, dup, retain, msgId):
-       log.debug("msg={payload}", payload=payload)
+        '''
+        Callback Receiving messages from publisher
+        '''
+        log.debug("msg={payload}", payload=payload)
 
 
     def onDisconnection(self, reason):
