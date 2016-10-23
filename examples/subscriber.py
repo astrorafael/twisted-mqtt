@@ -126,7 +126,7 @@ class MyService(ClientService):
         get notfied of disconnections
         and get a deferred for a new protocol object (next retry)
         '''
-        log.debug(" >< Connection was lost ! ><, reason={r}", r=reason)
+        log.debug("<Connection was lost !> <reason={r}>", r=reason)
         self.whenConnected().addCallback(self.connectToBroker)
 
 

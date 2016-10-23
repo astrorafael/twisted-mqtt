@@ -79,14 +79,14 @@ class MyService(ClientService):
         # Publish requests beyond window size are enqueued
         self.protocol.setWindowSize(3) 
         self.task = task.LoopingCall(self.publish)
-        self.task.start(5.0)
+        self.task.start(5.0, now=False)
         try:
             yield self.protocol.connect("TwistedMQTT-pub", keepalive=60)
         except Exception as e:
             log.error("Connecting to {broker} raised {excp!s}", 
                broker=BROKER, excp=e)
         else:
-            log.info("Connected and subscribed to {broker}", broker=BROKER)
+            log.info("Connected to {broker}", broker=BROKER)
 
 
     def onDisconnection(self, reason):
@@ -94,7 +94,7 @@ class MyService(ClientService):
         get notfied of disconnections
         and get a deferred for a new protocol object (next retry)
         '''
-        log.debug(" >< Connection was lost ! ><, reason={r}", r=reason)
+        log.debug("<Connection was lost !> <reason={r}>", r=reason)
         self.whenConnected().addCallback(self.connectToBroker)
 
 

@@ -78,7 +78,7 @@ class MyService(ClientService):
         self.protocol.onDisconnection = self.onDisconnection
         self.protocol.setWindowSize(3)
         self.task = task.LoopingCall(self.publish)
-        self.task.start(5.0) 
+        self.task.start(5.0, now=False) 
         try:
             yield self.protocol.connect("TwistedMQTT-pubsubs", keepalive=60)
             yield self.subscribe()
@@ -127,7 +127,7 @@ class MyService(ClientService):
         get notfied of disconnections
         and get a deferred for a new protocol object (next retry)
         '''
-        log.debug(" >< Connection was lost ! ><, reason={r}", r=reason)
+        log.debug("<Connection was lost !> <reason={r}>", r=reason)
         self.whenConnected().addCallback(self.connectToBroker)
 
 
