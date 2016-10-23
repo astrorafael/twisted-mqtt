@@ -469,9 +469,9 @@ class MQTTBaseProtocol(Protocol):
             self._pingReq.alarm.cancel()
             self._pingReq.alarm = None
         self.doConnectionLost(reason)
+        self.state = self.IDLE
         if self.onDisconnection:
             self.onDisconnection(reason)
-        self.state = self.IDLE
         
 
     # ---------------------------------
