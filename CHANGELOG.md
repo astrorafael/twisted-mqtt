@@ -36,6 +36,6 @@ Fixed missing key error bug.
 
 0.3.1
 =====
-Erased unneded setPublishHandler
-Robust examples
-Refactored connectionLost code
+Erased unneded setPublishHandler.
+Refactored connectionLost code.
+Robust examples.
