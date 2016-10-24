@@ -48,8 +48,30 @@ The APIs are described in the [library defined interfaces](mqtt/client/interface
 
 This library builds `MQTTProtocol` objects and is designed to be *used rather than inherited*.
 
+### Examples ###
+
+These examples show my library intended usage: managed by a service. Your Twisted application should probably be designed as a collection of services and one of these would be an MQTT Service. Note that a service is an object implementing the `IService` interface that can be started by `startService()` and stopped by `stopService()`. 
+
+Probably you also want your Service to handle automatic reconnections to the MQTT broker and that's where Twisted's `ClientService` class comes in. A ClientService instance detects its transport has been closed and re-opens the connection to the MQTT Broker.
+
+However, this is not enough for the MQTT protocol since the broker expects a CONNECT packet request shortly after the socket has been opened. So, for this reason, we must subclass  `ClientService` to override `startService()`. Also we will add some MQTT connection/disconnection code. This requires us to obtain somehow the protocol instance built by the factory.
+
+After a ClientService instance has been created, passing the proper MQTT protocol factory, we simply start the service. Inside `startService()` we invoke ClientService's method `whenConnected()` that returns a `Deferred`. This `Deferred` - when fired - will invoke a user function with the protocol instance as the parameter.
+
+Our custom `ClientService` subclass defines a `connectToBroker()` method, receiving the protocol just built. At minimun, we will store a reference to this protocol for further reference. If we wish to handle automatic reconnections, we must set the MQTT protocol onDisconnection attribute to a callback that will handle what to do in such cases. Our service 'onDisconnection()' callback will simple tell us to rebuild a new protocol instance and call `connectToBroker()` again when done. In this way, we start the whole MQTT CONNECT thing all over again.
+
+Finally, our custom `ClientService` example subclass may define a custom retry policy by customizing `backoffPolicy()` default arguments `initialDelay`, `maxDelay` and `factor`. See the `twisted.application.internet.backoffPolicy()` API reference for further details.
 
 ### Publisher Example ###
+
+A publisher is built by obtaining a factory for the `MQTTFactory.PUBLISHER`  profile.
+
+Your MQTT Publisher service should configure a couple of things in the `connectToBroker()` method:
+
+* The MQTT protocol `onDisconnection` attribute storing a callback that will be invoked when a disconnection occurs.
+* The maximun Window Size - that is - how many asynchronous PUBLISH request you will issue in a row to the library, before getting and acknowledge from the Broker (Qos=1 and 2 only)
+
+This example additionally starts a periodic task to publish sample data.
 
 ```python
 import sys
@@ -140,7 +162,7 @@ class MyService(ClientService):
             log.error("Connecting to {broker} raised {excp!s}", 
                broker=BROKER, excp=e)
         else:
-            log.info("Connected and subscribed to {broker}", broker=BROKER)
+            log.info("Connected to {broker}", broker=BROKER)
 
 
     def onDisconnection(self, reason):
@@ -190,6 +212,15 @@ if __name__ == '__main__':
 ```
 
 ### Subscriber Example ###
+
+A subscriber is built by obtaining a factory for the `MQTTFactory.SUBSCRIBER`  profile.
+
+Your MQTT Subscriber service should configure the following things in the `connectToBroker()` method:
+
+* The MQTT protocol `onDisconnection` attribute storing a callback that will be invoked when a disconnection occurs.
+* The maximun Window Size - that is - how many asynchronous SUBSCRIBE or UNSUBSCRIBE request you will issue in a row to the library, before getting and acknowledge from the Broker.
+* The MQTT protocol `onPublish` attribute storing a callback that will be fired whenever a new PUBLISH packed is delivered to the subscriber.
+
 
 ```python
 import sys
@@ -340,156 +371,9 @@ if __name__ == '__main__':
 
 
 ### Publisher/Subscriber Example ###
-```python
-import sys
 
-from twisted.internet.defer       import inlineCallbacks, DeferredList
-from twisted.internet             import reactor
-from twisted.internet.endpoints   import clientFromString
-from twisted.application.internet import ClientService, backoffPolicy
+A Publisher/Subscriber example is no more than a mix of the previous examples, not forgetting to set the MQTT factory profile to `MQTTFactory.PUBLISHER | MQTTFactory.SUBSCRIBER`.
 
-from twisted.logger   import (
-    Logger, LogLevel, globalLogBeginner, textFileLogObserver, 
-    FilteringLogObserver, LogLevelFilterPredicate)
-
-from mqtt.client.factory import MQTTFactory
-
-# ----------------
-# Global variables
-# ----------------
-
-# Global object to control globally namespace logging
-logLevelFilterPredicate = LogLevelFilterPredicate(defaultLogLevel=LogLevel.info)
-
-BROKER = "tcp:test.mosquitto.org:1883"
-
-# -----------------
-# Utility Functions
-# -----------------
-
-def startLogging(console=True, filepath=None):
-    '''
-    Starts the global Twisted logger subsystem with maybe
-    stdout and/or a file specified in the config file
-    '''
-    global logLevelFilterPredicate
-   
-    observers = []
-    if console:
-        observers.append( FilteringLogObserver(observer=textFileLogObserver(sys.stdout),  
-            predicates=[logLevelFilterPredicate] ))
-    
-    if filepath is not None and filepath != "":
-        observers.append( FilteringLogObserver(observer=textFileLogObserver(open(filepath,'a')), 
-            predicates=[logLevelFilterPredicate] ))
-    globalLogBeginner.beginLoggingTo(observers)
-
-
-def setLogLevel(namespace=None, levelStr='info'):
-    '''
-    Set a new log level for a given namespace
-    LevelStr is: 'critical', 'error', 'warn', 'info', 'debug'
-    '''
-    level = LogLevel.levelWithName(levelStr)
-    logLevelFilterPredicate.setLogLevelForNamespace(namespace=namespace, level=level)
-
-# -----------------------
-# MQTT Subscriber Service
-# ------------------------
-
-class MyService(ClientService):
-
-
-    def __init(self, endpoint, factory):
-        ClientService.__init__(self, endpoint, factory, retryPolicy=backoffPolicy())
-
-
-    def startService(self):
-        log.info("starting MQTT Client Subscriber Service")
-        # invoke whenConnected() inherited method
-        self.whenConnected().addCallback(self.connectToBroker)
-        ClientService.startService(self)
-
-
-    @inlineCallbacks
-    def connectToBroker(self, protocol):
-        '''
-        Connect to MQTT broker
-        '''
-        self.protocol                 = protocol
-        self.protocol.onPublish       = self.onPublish
-        self.protocol.onDisconnection = self.onDisconnection
-        self.protocol.setWindowSize(3)
-        self.task = task.LoopingCall(self.publish)
-        self.task.start(5.0) 
-        try:
-            yield self.protocol.connect("TwistedMQTT-pubsubs", keepalive=60)
-            yield self.subscribe()
-        except Exception as e:
-            log.error("Connecting to {broker} raised {excp!s}", 
-               broker=BROKER, excp=e)
-        else:
-            log.info("Connected and subscribed to {broker}", broker=BROKER)
-
-
-    def publish(self):
-
-        def _logFailure(failure):
-            log.debug("publisher reported {message}", message=failure.getErrorMessage())
-            return failure
-
-        d1 = self.protocol.publish(topic="foo/bar/baz1", qos=1, message="hello world 1")
-        d1.addErrback(_logFailure)       
-        return d1
-
-
-    def subscribe(self):
-
-        def _logFailure(failure):
-            log.debug("subscriber reported {message}", message=failure.getErrorMessage())
-            return failure
-
-        def _logGrantedQoS(value):
-            log.debug("subscriber response {value!r}", value=value)
-            return True
-
-        d1 = self.protocol.subscribe("foo/bar/baz1", 2)
-        d1.addCallbacks(_logGrantedQoS, _logFailure)      
-        return d1
-
-
-    def onPublish(self, topic, payload, qos, dup, retain, msgId):
-        '''
-        Callback Receiving messages from publisher
-        '''
-        log.debug("msg={payload}", payload=payload)
-
-
-    def onDisconnection(self, reason):
-        '''
-        get notfied of disconnections
-        and get a deferred for a new protocol object (next retry)
-        '''
-        log.debug(" >< Connection was lost ! ><, reason={r}", r=reason)
-        self.whenConnected().addCallback(self.connectToBroker)
-
-
-if __name__ == '__main__':
-    import sys
-    log = Logger()
-    startLogging()
-    setLogLevel(namespace='mqtt',     levelStr='debug')
-    setLogLevel(namespace='__main__', levelStr='debug')
-    factory    = MQTTFactory(profile=MQTTFactory.PUBLISHER | MQTTFactory.SUBSCRIBER)
-    myEndpoint = clientFromString(reactor, BROKER)
-    serv       = MyService(myEndpoint, factory)
-    serv.startService()
-    reactor.run()
-    
-
-```
-	
-	
 Design Notes
 ------------
 
