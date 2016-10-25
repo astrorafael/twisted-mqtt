@@ -50,15 +50,15 @@ This library builds `MQTTProtocol` objects and is designed to be *used rather th
 
 ### Examples ###
 
-These examples show my library intended usage: managed by a service. Your Twisted application should probably be designed as a collection of services and one of these would be an MQTT Service. Note that a service is an object implementing the `IService` interface that can be started by `startService()` and stopped by `stopService()`. 
+These examples show my library intended usage: managed by a service. Your Twisted application should probably be designed as a collection of services and one of these would be an MQTT Service. Note that a service is simply an object that can be started by `startService()` and stopped by `stopService()`. 
 
-Probably you also want your Service to handle automatic reconnections to the MQTT broker and that's where Twisted's `ClientService` class comes in. A ClientService instance detects its transport has been closed and re-opens the connection to the MQTT Broker.
+Probably you also want your service to handle automatic reconnections to the MQTT broker and that's where Twisted's `ClientService` class comes in. A `ClientService` instance detects its transport has been closed and re-opens the connection to the MQTT Broker.
 
-However, this is not enough for the MQTT protocol since the broker expects a CONNECT packet request shortly after the socket has been opened. So, for this reason, we must subclass  `ClientService` to override `startService()`. Also we will add some MQTT connection/disconnection code. This requires us to obtain somehow the protocol instance built by the factory.
+However, this is not enough for the MQTT protocol since the broker expects a CONNECT packet request shortly after the socket has been opened. For this reason, we must subclass  `ClientService` to override `startService()`. Also we will add some MQTT connection/disconnection handling code. This requires us to obtain somehow the protocol instance built by the factory.
 
-After a ClientService instance has been created, passing the proper MQTT protocol factory, we simply start the service. Inside `startService()` we invoke ClientService's method `whenConnected()` that returns a `Deferred`. This `Deferred` - when fired - will invoke a user function with the protocol instance as the parameter.
+In the startup code, we create a `ClientService` instance, passing the proper MQTT protocol factory and we simply start the service. Inside `startService()` we invoke ClientService's method `whenConnected()` that returns a `Deferred`. This `Deferred` - when fired - will invoke a user function with the protocol object been created as the parameter.
 
-Our custom `ClientService` subclass defines a `connectToBroker()` method, receiving the protocol just built. At minimun, we will store a reference to this protocol for further reference. If we wish to handle automatic reconnections, we must set the MQTT protocol onDisconnection attribute to a callback that will handle what to do in such cases. Our service 'onDisconnection()' callback will simple tell us to rebuild a new protocol instance and call `connectToBroker()` again when done. In this way, we start the whole MQTT CONNECT thing all over again.
+Our custom `ClientService` subclass defines a `connectToBroker()` method, receiving the protocol object just built. At minimun, we will store a reference to this protocol for further reference. If we wish to handle automatic reconnections, we should set the MQTT protocol `onDisconnection` attribute to a callback that will handle what to do in such cases. Our service `onDisconnection()` callback will simple tell us to rebuild a new protocol instance and call `connectToBroker()` again when done. In this way, we start the whole MQTT CONNECT thing all over again.
 
 Finally, our custom `ClientService` example subclass may define a custom retry policy by customizing `backoffPolicy()` default arguments `initialDelay`, `maxDelay` and `factor`. See the `twisted.application.internet.backoffPolicy()` API reference for further details.
 
