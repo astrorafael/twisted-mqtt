@@ -69,7 +69,7 @@ A publisher is built by obtaining a factory for the `MQTTFactory.PUBLISHER`  pro
 Your MQTT Publisher service should configure a couple of things in the `connectToBroker()` method:
 
 * The MQTT protocol `onDisconnection` attribute storing a callback that will be invoked when a disconnection occurs.
-* The maximun Window Size - that is - how many asynchronous PUBLISH request you will issue in a row to the library, before getting and acknowledge from the Broker (Qos=1 and 2 only)
+* The maximun Window Size - that is - how many asynchronous PUBLISH request you will issue in a row to the library, before getting and acknowledge from the Broker (Qos=1 and 2 only). By thefault, the window size is 1 and this guarantees in-order delivery of published messages.
 
 This example additionally starts a periodic task to publish sample data.
 
