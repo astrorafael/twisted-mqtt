@@ -347,6 +347,7 @@ class MQTTBaseProtocol(Protocol):
         except KeyError as e:
             # Invalid packet type, throw away this packet
             log.error("Invalid packet type %x" % packet_type)
+            self.abortConnection()
             return
 
 
@@ -358,6 +359,7 @@ class MQTTBaseProtocol(Protocol):
         else:
             # No decoder
             log.error("Invalid packet decoder for %s" % packet_type_name)
+            self.abortConnection()
             return
 
     # -----------------------------
@@ -369,8 +371,13 @@ class MQTTBaseProtocol(Protocol):
         Decodes specific CONNACK data from Variable Header & Payload
         '''
         response = CONNACK()
-        response.decode(packet)
-        self.state.handleCONNACK(response)
+        try:
+            response.decode(packet)
+        except Exception as e:
+            log.failure("MQTT PDU corrupt. Closing connection !")
+            self.abortConnection()
+        else:
+            self.state.handleCONNACK(response)
 
     # ------------------------------------------------------------------------
 
@@ -387,8 +394,13 @@ class MQTTBaseProtocol(Protocol):
         Decodes specific SUBACK data from Variable Header & Payload
         '''
         response = SUBACK()
-        response.decode(packet)
-        self.state.handleSUBACK(response)
+        try:
+            response.decode(packet)
+        except Exception as e:
+            log.failure("MQTT PDU corrupt. Closing connection !")
+            self.abortConnection()
+        else:
+            self.state.handleSUBACK(response)
 
     # ------------------------------------------------------------------------
 
@@ -397,8 +409,13 @@ class MQTTBaseProtocol(Protocol):
         Decodes specific UNSUBACK data from Variable Header & Payload
         '''
         response = UNSUBACK()
-        response.decode(packet)
-        self.state.handleUNSUBACK(response)
+        try:
+            response.decode(packet)
+        except Exception as e:
+            log.failure("MQTT PDU corrupt. Closing connection !")
+            self.abortConnection()
+        else:
+            self.state.handleUNSUBACK(response)
 
     # ------------------------------------------------------------------------
 
@@ -407,8 +424,13 @@ class MQTTBaseProtocol(Protocol):
         Decodes specific PUBLISH data from Flags, Variable Header & Payload
         '''
         response = PUBLISH()
-        response.decode(packet)
-        self.state.handlePUBLISH(response)
+        try:
+            response.decode(packet)
+        except Exception as e:
+            log.failure("MQTT PDU corrupt. Closing connection !")
+            self.abortConnection()
+        else:
+            self.state.handlePUBLISH(response)
 
     # ------------------------------------------------------------------------
 
@@ -417,8 +439,13 @@ class MQTTBaseProtocol(Protocol):
         Decodes specific PUBACK data from Variable Header & Payload
         '''
         response = PUBACK()
-        response.decode(packet)
-        self.state.handlePUBACK(response)
+        try:
+            response.decode(packet)
+        except Exception as e:
+            log.failure("MQTT PDU corrupt. Closing connection !")
+            self.abortConnection()
+        else:
+            self.state.handlePUBACK(response)
 
     # ------------------------------------------------------------------------
 
@@ -427,8 +454,13 @@ class MQTTBaseProtocol(Protocol):
         Decodes specific PUBREL data from Variable Header & Payload
         '''
         response = PUBREL()
-        response.decode(packet)
-        self.state.handlePUBREL(response)
+        try:
+            response.decode(packet)
+        except Exception as e:
+            log.failure("MQTT PDU corrupt. Closing connection !")
+            self.abortConnection()
+        else:
+            self.state.handlePUBREL(response)
 
     # ------------------------------------------------------------------------
 
@@ -437,8 +469,13 @@ class MQTTBaseProtocol(Protocol):
         Decodes specific PUBREC data from Variable Header & Payload
         '''
         response = PUBREC()
-        response.decode(packet)
-        self.state.handlePUBREC(response)
+        try:
+            response.decode(packet)
+        except Exception as e:
+            log.failure("MQTT PDU corrupt. Closing connection !")
+            self.abortConnection()
+        else:
+            self.state.handlePUBREC(response)
 
     # ------------------------------------------------------------------------
 
@@ -447,7 +484,11 @@ class MQTTBaseProtocol(Protocol):
         Decodes specific PUBCOMP data from Variable Header & Payload
         '''
         response = PUBCOMP()
-        response.decode(packet)
+        try:
+            response.decode(packet)
+        except Exception as e:
+            log.failure("MQTT PDU corrupt. Closing connection !")
+            self.abortConnection()
         self.state.handlePUBCOMP(response)
 
     # ------------------------------------------------------------------------
