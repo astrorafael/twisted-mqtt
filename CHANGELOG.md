@@ -39,3 +39,8 @@ Fixed missing key error bug.
 Erased unneded setPublishHandler.
 Refactored connectionLost code.
 Robust examples.
+
+0.3.2
+=====
+Fixed reconenction bug.
+
