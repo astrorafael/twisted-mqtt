@@ -512,7 +512,7 @@ class MQTTBaseProtocol(Protocol):
         self.doConnectionLost(reason)
         self.state = self.IDLE
         if self.onDisconnection:
-            self.onDisconnection(reason)
+            self.callLater(0.1, self.onDisconnection, reason)
         
 
     # ---------------------------------
