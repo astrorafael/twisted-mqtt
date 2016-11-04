@@ -44,3 +44,7 @@ Robust examples.
 =====
 Fixed reconenction bug.
 
+0.3.3
+=====
+Doc fixes
+

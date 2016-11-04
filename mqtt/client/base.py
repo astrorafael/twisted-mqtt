@@ -511,6 +511,9 @@ class MQTTBaseProtocol(Protocol):
             self._pingReq.alarm = None
         self.doConnectionLost(reason)
         self.state = self.IDLE
+        # The disconnect callback is invoked in another reactor loop cycle
+        # Otherwise, the reconnection attempt happens before connection cleanup
+        # which obviopusly it si not what we want.
         if self.onDisconnection:
             self.callLater(0.1, self.onDisconnection, reason)
         

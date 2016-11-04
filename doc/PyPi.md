@@ -63,8 +63,8 @@ to upload them to GitHub and mark releases there as well.
 
 7. Do 3 through 5 with the normal PyPi website
 
-	`sudo python setup.py register` 
-	`sudo python setup.py sdist upload`
+	`sudo python setup.py register-r pypi` 
+	`sudo python setup.py sdist upload -r pypi`
 	`sudo pip install <package name>`
 
 # Updating GitHub repo
