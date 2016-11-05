@@ -130,7 +130,7 @@ def setLogLevel(namespace=None, levelStr='info'):
 # MQTT Publishing Service
 # -----------------------
 
-class MyService(ClientService):
+class MQTTService(ClientService):
 
     def __init(self, endpoint, factory):
         ClientService.__init__(self, endpoint, factory, retryPolicy=backoffPolicy())
@@ -279,7 +279,7 @@ def setLogLevel(namespace=None, levelStr='info'):
 # MQTT Subscriber Service
 # ------------------------
 
-class MyService(ClientService):
+class MQTTService(ClientService):
 
 
     def __init(self, endpoint, factory):

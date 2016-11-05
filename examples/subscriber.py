@@ -54,7 +54,7 @@ def setLogLevel(namespace=None, levelStr='info'):
 # MQTT Subscriber Service
 # ------------------------
 
-class MyService(ClientService):
+class MQTTService(ClientService):
 
 
     def __init(self, endpoint, factory):
