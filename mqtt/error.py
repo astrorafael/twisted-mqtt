@@ -152,7 +152,7 @@ class MQTTError(Exception):
 
 
 class MQTTStateError(MQTTError):
-    '''MQTT protocol error'''
+    '''MQTT protocol state error'''
     def __str__(self):
         s = self.__doc__
         if self.args:
