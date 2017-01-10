@@ -347,7 +347,7 @@ class MQTTBaseProtocol(Protocol):
         except KeyError as e:
             # Invalid packet type, throw away this packet
             log.error("Invalid packet type %x" % packet_type)
-            self.abortConnection()
+            self.transport.abortConnection()
             return
 
 
@@ -359,7 +359,7 @@ class MQTTBaseProtocol(Protocol):
         else:
             # No decoder
             log.error("Invalid packet decoder for %s" % packet_type_name)
-            self.abortConnection()
+            self.transport.abortConnection()
             return
 
     # -----------------------------
@@ -375,8 +375,8 @@ class MQTTBaseProtocol(Protocol):
             response.decode(packet)
         except Exception as e:
             log.debug("Exception {e!r}.", e)
-            log.error("MQTT PDU corrupt.  Closing connection !")
-            self.abortConnection()
+            log.error("MQTT CONNACK PDU corrupt. Closing connection !")
+            self.transport.abortConnection()
         else:
             self.state.handleCONNACK(response)
 
@@ -399,8 +399,8 @@ class MQTTBaseProtocol(Protocol):
             response.decode(packet)
         except Exception as e:
             log.debug("Exception {e!r}.", e)
-            log.error("MQTT PDU corrupt. Closing connection !")
-            self.abortConnection()
+            log.error("MQTT SUBACK PDU corrupt. Closing connection !")
+            self.transport.abortConnection()
         else:
             self.state.handleSUBACK(response)
 
@@ -415,8 +415,8 @@ class MQTTBaseProtocol(Protocol):
             response.decode(packet)
         except Exception as e:
             log.debug("Exception {e!r}.", e)
-            log.error("MQTT PDU corrupt. Closing connection !")
-            self.abortConnection()
+            log.error("MQTT UNSUBACK PDU corrupt. Closing connection !")
+            self.transport.abortConnection()
         else:
             self.state.handleUNSUBACK(response)
 
@@ -431,8 +431,8 @@ class MQTTBaseProtocol(Protocol):
             response.decode(packet)
         except Exception as e:
             log.debug("Exception {e!r}.", e)
-            log.error("MQTT PDU corrupt. Closing connection !")
-            self.abortConnection()
+            log.error("MQTT PUBLISH PDU corrupt. Closing connection !")
+            self.transport.abortConnection()
         else:
             self.state.handlePUBLISH(response)
 
@@ -447,8 +447,8 @@ class MQTTBaseProtocol(Protocol):
             response.decode(packet)
         except Exception as e:
             log.debug("Exception {e!r}.", e)
-            log.error("MQTT PDU corrupt. Closing connection !")
-            self.abortConnection()
+            log.error("MQTT PUBACK PDU corrupt. Closing connection !")
+            self.transport.abortConnection()
         else:
             self.state.handlePUBACK(response)
 
@@ -463,8 +463,8 @@ class MQTTBaseProtocol(Protocol):
             response.decode(packet)
         except Exception as e:
             log.debug("Exception {e!r}.", e)
-            log.error("MQTT PDU corrupt. Closing connection !")
-            self.abortConnection()
+            log.error("MQTT PUBREL PDU corrupt. Closing connection !")
+            self.transport.abortConnection()
         else:
             self.state.handlePUBREL(response)
 
@@ -479,8 +479,8 @@ class MQTTBaseProtocol(Protocol):
             response.decode(packet)
         except Exception as e:
             log.debug("Exception {e!r}.", e)
-            log.error("MQTT PDU corrupt. Closing connection !")
-            self.abortConnection()
+            log.error("MQTT PUBREL PDU corrupt. Closing connection !")
+            self.transport.abortConnection()
         else:
             self.state.handlePUBREC(response)
 
@@ -495,8 +495,8 @@ class MQTTBaseProtocol(Protocol):
             response.decode(packet)
         except Exception as e:
             log.debug("Exception {e!r}.", e)
-            log.error("MQTT PDU corrupt. Closing connection !")
-            self.abortConnection()
+            log.error("MQTT PUBCOMP PDU corrupt. Closing connection !")
+            self.transport.abortConnection()
         self.state.handlePUBCOMP(response)
 
     # ------------------------------------------------------------------------

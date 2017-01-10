@@ -46,5 +46,7 @@ Fixed reconenction bug.
 
 0.3.3
 =====
-Doc fixes
+Doc fixes.
+Fixed abortConnection() bug.
+
 
