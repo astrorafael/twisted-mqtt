@@ -49,4 +49,8 @@ Fixed reconenction bug.
 Doc fixes.
 Fixed abortConnection() bug.
 
+0.3.4
+=====
+Alpha => Beta status
+
 

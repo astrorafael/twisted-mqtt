@@ -43,7 +43,7 @@ classifiers = [
     'Framework :: Twisted',	
     'Topic :: Communications',
     'Topic :: Internet',
-    'Development Status :: 3 - Alpha',
+    'Development Status :: 4 - Beta',
 ]
 
 
