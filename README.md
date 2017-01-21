@@ -395,8 +395,6 @@ The current implementation has the following limitations:
 
 * There is a limited form of session persistance for the publisher. Pending acknowledges for PUBLISH and PUBREL are kept in RAM and outlive the connection and the protocol object while Twisted is running. However, they are not stored in a persistent medium.
 
-For the time being, I consider this library to be in *Alpha* state.
-
 TODO
 ----
 
