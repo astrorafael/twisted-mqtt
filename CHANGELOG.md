@@ -52,5 +52,6 @@ Fixed abortConnection() bug.
 0.3.4
 =====
 Alpha => Beta status
+Solved issue https://github.com/astrorafael/twisted-mqtt/issues/7
 
 

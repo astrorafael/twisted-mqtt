@@ -1,7 +1,7 @@
 import sys
 
 from twisted.internet.defer       import inlineCallbacks, DeferredList
-from twisted.internet             import reactor
+from twisted.internet             import reactor, task
 from twisted.internet.endpoints   import clientFromString
 from twisted.application.internet import ClientService, backoffPolicy
 
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     setLogLevel(namespace='__main__', levelStr='debug')
     factory    = MQTTFactory(profile=MQTTFactory.PUBLISHER | MQTTFactory.SUBSCRIBER)
     myEndpoint = clientFromString(reactor, BROKER)
-    serv       = MyService(myEndpoint, factory)
+    serv       = MQTTService(myEndpoint, factory)
     serv.startService()
     reactor.run()
     

@@ -206,7 +206,7 @@ if __name__ == '__main__':
 
     factory    = MQTTFactory(profile=MQTTFactory.PUBLISHER)
     myEndpoint = clientFromString(reactor, BROKER)
-    serv       = MyService(myEndpoint, factory)
+    serv       = MQTTService(myEndpoint, factory)
     serv.startService()
     reactor.run()
 ```
@@ -364,7 +364,7 @@ if __name__ == '__main__':
 
     factory    = MQTTFactory(profile=MQTTFactory.SUBSCRIBER)
     myEndpoint = clientFromString(reactor, BROKER)
-    serv       = MyService(myEndpoint, factory)
+    serv       = MQTTService(myEndpoint, factory)
     serv.startService()
     reactor.run()
 ```
