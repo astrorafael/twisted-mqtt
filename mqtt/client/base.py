@@ -374,7 +374,7 @@ class MQTTBaseProtocol(Protocol):
         try:
             response.decode(packet)
         except Exception as e:
-            log.debug("Exception {e!r}.", e)
+            log.debug("Exception {excp!r}.", excp=e)
             log.error("MQTT CONNACK PDU corrupt. Closing connection !")
             self.transport.abortConnection()
         else:
@@ -398,7 +398,7 @@ class MQTTBaseProtocol(Protocol):
         try:
             response.decode(packet)
         except Exception as e:
-            log.debug("Exception {e!r}.", e)
+            log.debug("Exception {excp!r}.", excp=e)
             log.error("MQTT SUBACK PDU corrupt. Closing connection !")
             self.transport.abortConnection()
         else:
@@ -414,7 +414,7 @@ class MQTTBaseProtocol(Protocol):
         try:
             response.decode(packet)
         except Exception as e:
-            log.debug("Exception {e!r}.", e)
+            log.debug("Exception {excp!r}.", excp=e)
             log.error("MQTT UNSUBACK PDU corrupt. Closing connection !")
             self.transport.abortConnection()
         else:
@@ -430,7 +430,7 @@ class MQTTBaseProtocol(Protocol):
         try:
             response.decode(packet)
         except Exception as e:
-            log.debug("Exception {e!r}.", e)
+            log.debug("Exception {excp!r}.", excp=e)
             log.error("MQTT PUBLISH PDU corrupt. Closing connection !")
             self.transport.abortConnection()
         else:
@@ -446,7 +446,7 @@ class MQTTBaseProtocol(Protocol):
         try:
             response.decode(packet)
         except Exception as e:
-            log.debug("Exception {e!r}.", e)
+            log.debug("Exception {excp!r}.", excp=e)
             log.error("MQTT PUBACK PDU corrupt. Closing connection !")
             self.transport.abortConnection()
         else:
@@ -462,7 +462,7 @@ class MQTTBaseProtocol(Protocol):
         try:
             response.decode(packet)
         except Exception as e:
-            log.debug("Exception {e!r}.", e)
+            log.debug("Exception {excp!r}.", excp=e)
             log.error("MQTT PUBREL PDU corrupt. Closing connection !")
             self.transport.abortConnection()
         else:
@@ -478,7 +478,7 @@ class MQTTBaseProtocol(Protocol):
         try:
             response.decode(packet)
         except Exception as e:
-            log.debug("Exception {e!r}.", e)
+            log.debug("Exception {excp!r}.", excp=e)
             log.error("MQTT PUBREL PDU corrupt. Closing connection !")
             self.transport.abortConnection()
         else:
@@ -494,7 +494,7 @@ class MQTTBaseProtocol(Protocol):
         try:
             response.decode(packet)
         except Exception as e:
-            log.debug("Exception {e!r}.", e)
+            log.debug("Exception {excp!r}.", excp=e)
             log.error("MQTT PUBCOMP PDU corrupt. Closing connection !")
             self.transport.abortConnection()
         self.state.handlePUBCOMP(response)
@@ -715,7 +715,7 @@ class MQTTBaseProtocol(Protocol):
 
     def doConnectionLost(self, reason):
         '''
-        To bse subclassed
+        To be subclassed
         '''
         pass
 
@@ -746,4 +746,4 @@ class MQTTBaseProtocol(Protocol):
     # ------------------------------------------------------------------------
 
 
-__all__ = [MQTTBaseProtocol]
+__all__ = ["MQTTBaseProtocol"]
