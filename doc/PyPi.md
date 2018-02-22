@@ -15,12 +15,14 @@ How to upload a new package release into PyPi
     pypitest
 
 	[pypitest]
-	repository = https://testpypi.python.org/pypi
+	#repository = https://testpypi.python.org/pypi
+	repository = https://test.pypi.org/legacy/
 	username = <my pypitest username>
 	password = <my pypitest password>
 
 	[pypi]
-	repository = https://pypi.python.org/pypi
+	#repository = https://pypi.python.org/pypi
+	repository = https://upload.pypi.org/legacy/
 	username = <my pypi username>
 	password = <my pypi password>
 
@@ -49,6 +51,7 @@ to upload them to GitHub and mark releases there as well.
 
 	(to delete a tag type `git tag -d <tag>`)
 
+
 4. Register the new release in testing PyPi website
 
 	`sudo python setup.py register -r pypitest`
@@ -66,6 +69,11 @@ to upload them to GitHub and mark releases there as well.
 	`sudo python setup.py register-r pypi` 
 	`sudo python setup.py sdist upload -r pypi`
 	`sudo pip install <package name>`
+
+***NOTE***: As of 2017, steps 4 & 5 are deprecated. Use `twine` tool instead.
+
+`sudo python setup.py sdist`
+`twine upload dist/twisted-mqtt-X.Y.Z.tar.gz`
 
 # Updating GitHub repo
 
