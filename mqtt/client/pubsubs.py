@@ -624,12 +624,12 @@ class MQTTProtocol(MQTTBaseProtocol):
         for k in list(self.factory.windowPublish[self.addr]):
             request = self.factory.windowPublish[self.addr][k]
             del self.factory.windowPublish[self.addr][k]
-            request.deferred.errback(MQTTSessionCleared)
+            request.deferred.errback(MQTTSessionCleared())
 
         for k in list(self.factory.windowPubRelease[self.addr]):
             request = self.factory.windowPubRelease[self.addr][k]
             del self.factory.windowPubRelease[self.addr][k]
-            request.deferred.errback(MQTTSessionCleared)
+            request.deferred.errback(MQTTSessionCleared())
 
 
     # -------------------------------------
