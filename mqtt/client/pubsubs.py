@@ -352,7 +352,7 @@ class MQTTProtocol(MQTTBaseProtocol):
         Called when a CONNACK has been received (publisher only).
         '''
         if self._cleanStart:
-            self._purgeSession()
+            self._purgeSession(MQTTSessionCleared())
         else:
             self._syncSession()
         if self.onMqttConnectionMade:
@@ -616,7 +616,7 @@ class MQTTProtocol(MQTTBaseProtocol):
 
     # --------------------------------------------------------------------------
 
-    def _purgeSession(self):
+    def _purgeSession(self, reason):
         '''
         Purges the persistent state in the client 
         '''
@@ -624,12 +624,12 @@ class MQTTProtocol(MQTTBaseProtocol):
         for k in list(self.factory.windowPublish[self.addr]):
             request = self.factory.windowPublish[self.addr][k]
             del self.factory.windowPublish[self.addr][k]
-            request.deferred.errback(MQTTSessionCleared)
+            request.deferred.errback(reason)
 
         for k in list(self.factory.windowPubRelease[self.addr]):
             request = self.factory.windowPubRelease[self.addr][k]
             del self.factory.windowPubRelease[self.addr][k]
-            request.deferred.errback(MQTTSessionCleared)
+            request.deferred.errback(reason)
 
 
     # -------------------------------------
@@ -668,13 +668,6 @@ class MQTTProtocol(MQTTBaseProtocol):
                 request = self.factory.windowUnsubscribe[self.addr][k]
                 del self.factory.windowUnsubscribe[self.addr][k]
                 request.deferred.errback(reason)
-            for k in list(self.factory.windowPubRelease[self.addr]):
-                request = self.factory.windowPubRelease[self.addr][k]
-                del self.factory.windowPubRelease[self.addr][k]
-                request.deferred.errback(reason)
-            for k in list(self.factory.windowPublish[self.addr]):
-                request = self.factory.windowPublish[self.addr][k]
-                del self.factory.windowPublish[self.addr][k]
-                request.deferred.errback(reason)   
+            self._purgeSession(reason)
 
 __all__ = [ "MQTTProtocol" ]
