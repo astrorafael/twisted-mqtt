@@ -57,7 +57,7 @@ def setLogLevel(namespace=None, levelStr='info'):
 class MQTTService(ClientService):
 
 
-    def __init(self, endpoint, factory):
+    def __init__(self, endpoint, factory):
         ClientService.__init__(self, endpoint, factory, retryPolicy=backoffPolicy())
 
 
