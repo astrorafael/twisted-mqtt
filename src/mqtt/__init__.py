@@ -22,11 +22,7 @@
 # ----------------------------------------------------------------------
 
 import sys
-
-
-from ._version import get_versions
-__version__ = get_versions()['version']
-del get_versions
+from ._version import __version__
 
 # Constant for MQTT v3.1
 v31  = {'level': 3, 'tag': 'MQIsdp'}
@@ -38,7 +34,7 @@ v311 = {'level': 4, 'tag': 'MQTT'}
 PY2 = sys.version_info[0] == 2
 
 __all__ = [
-    v31,
-    v311,
-    PY2,
+    'v31',
+    'v311',
+    'PY2',
 ]

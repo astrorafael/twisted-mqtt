@@ -12,3 +12,5 @@ mqtt/client/*.pyc
 mqtt/client/*~
 mqtt/__pycache__
 mqtt/client/__pycache__
+.venv
+src/mqtt/_version.py

@@ -1,4 +1,0 @@
-include versioneer.py
-include mqtt/_version.py
-include README.md
-exclude _trial_temp 
