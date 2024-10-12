@@ -4,7 +4,7 @@ dynamic = ["version"]
 description = "twisted-mqtt is a library using the Twisted framework and implementing the MQTT protocol (v3.1 & v3.1.1)"
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "MIT"}
+license = {file = "LICENSE"}
 authors = [
     {name = "Rafael González", email = "rafael08@ucm.es"},
     {name = "Jaime Zamorano", email = "jzamorano@fis.ucm.es"},
