@@ -120,4 +120,4 @@ class MQTTFactory(ReconnectingClientFactory):
         return self.id
 
 
-__all__ = [MQTTFactory]
+__all__ = ['MQTTFactory']
